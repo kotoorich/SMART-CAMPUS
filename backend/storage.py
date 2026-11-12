@@ -2,7 +2,7 @@
 
 Photos are written to a private directory outside any static/web root and are
 never exposed as public URLs. Each stored file is addressed by an opaque random
-key; the database only ever holds that key (``Attendance.image_ref``). Retrieval
+key; the database only ever holds that key (Attendance.image_ref). Retrieval
 goes through an authenticated endpoint that checks the caller is an authorised
 lecturer or administrator, so a photograph cannot be fetched by guessing an id.
 
@@ -10,6 +10,7 @@ Files are validated for type (JPEG/PNG/WebP) and size before being written.
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
 import secrets
@@ -17,16 +18,55 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-# Private directory beside the backend package — deliberately NOT under any
-# directory that a web server or the frontend dev server serves.
-# Render's persistent disks are mounted at /var/data. Attach a disk at
-# that mount path to retain private selfies across deploys and restarts.
-# Local development continues to store files inside backend/private_uploads.
-if os.environ.get("RENDER", "").lower() == "true":
-    STORE_DIR = Path("/var/data/smart-campus/attendance")
-else:
-    STORE_DIR = Path(__file__).resolve().parent / "private_uploads" / "attendance"
-STORE_DIR.mkdir(parents=True, exist_ok=True)
+logger = logging.getLogger(__name__)
+
+
+def _initialise_store_dir() -> Path:
+    """Choose a writable private storage path, with a safe Render fallback."""
+    configured_dir = os.environ.get("STORAGE_DIR")
+    is_render = os.environ.get("RENDER", "").lower() == "true"
+
+    if configured_dir:
+        candidates = [Path(configured_dir).expanduser()]
+    elif is_render:
+        candidates = [
+            Path("/var/data/smart-campus/attendance"),
+            Path("/tmp/smart-campus/attendance"),
+        ]
+    else:
+        candidates = [
+            Path(__file__).resolve().parent / "private_uploads" / "attendance"
+        ]
+
+    last_error: OSError | None = None
+    for candidate in candidates:
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            if not os.access(candidate, os.W_OK | os.X_OK):
+                raise PermissionError(f"Storage directory is not writable: {candidate}")
+            if is_render and str(candidate).startswith("/tmp/"):
+                logger.warning(
+                    "Render persistent storage is unavailable; using ephemeral %s. "
+                    "Attendance selfies may be lost when the instance restarts. "
+                    "Attach a persistent disk at /var/data or configure STORAGE_DIR.",
+                    candidate,
+                )
+            return candidate
+        except OSError as exc:
+            last_error = exc
+            logger.warning("Cannot use storage directory %s: %s", candidate, exc)
+
+    raise RuntimeError(
+        "No writable private attendance storage directory is available. "
+        "Configure STORAGE_DIR to a writable path."
+    ) from last_error
+
+
+# STORAGE_DIR may be configured on any host. Render's persistent disk is
+# preferred; without an attached/writable disk, /tmp keeps the API bootable.
+# The /tmp fallback is ephemeral across restarts. For durable selfie storage,
+# attach a Render disk and set STORAGE_DIR=/var/data/smart-campus/attendance.
+STORE_DIR = _initialise_store_dir()
 
 MAX_BYTES = 5 * 1024 * 1024  # 5 MB
 _EXT_BY_FORMAT = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}
