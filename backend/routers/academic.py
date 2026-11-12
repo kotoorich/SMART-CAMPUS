@@ -278,7 +278,7 @@ def create_course(body: CourseCreate, user: User = Depends(get_current_user), db
     if not lecturer:
         raise HTTPException(404, "Lecturer not found")
     code = body.code.strip().upper()
-    if db.query(Course).filter(Course.code == code, Course.institution_name.ilike(lecturer.institution_name or "")).first():
+    if db.query(Course).filter(Course.code == code, Course.institution_name == lecturer.institution_name).first():
         raise HTTPException(409, "Course code already exists in your institution")
     requested_programme_id = body.programme_id or (body.programme_ids[0] if body.programme_ids else None)
     if not requested_programme_id:
