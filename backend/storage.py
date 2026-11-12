@@ -57,8 +57,8 @@ USE_SUPABASE, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_STORAGE_BUCKET =
 def _initialise_local_store() -> Path:
     configured = os.getenv("STORAGE_DIR", "").strip()
     candidates = [Path(configured).expanduser()] if configured else []
-    candidates.append(Path(tempfile.gettempdir()) / "smart-campus" / "attendance")
     candidates.append(Path(__file__).resolve().parent / "private_uploads" / "attendance")
+    candidates.append(Path(tempfile.gettempdir()) / "smart-campus" / "attendance")
     for candidate in candidates:
         try:
             candidate.mkdir(parents=True, exist_ok=True)
