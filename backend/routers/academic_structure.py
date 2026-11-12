@@ -6,6 +6,7 @@ own institution. Administrators have cross-institution read-only oversight.
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 from auth import get_current_user
@@ -53,9 +54,9 @@ def _directory(db: Session, institution_name: str | None = None):
     query_d = db.query(Department)
     query_p = db.query(Programme)
     if institution_name:
-        query_f = query_f.filter(Faculty.institution_name.ilike(institution_name))
-        query_d = query_d.filter(Department.institution_name.ilike(institution_name))
-        query_p = query_p.filter(Programme.institution_name.ilike(institution_name))
+        query_f = query_f.filter(func.lower(Faculty.institution_name) == institution_name.strip().lower())
+        query_d = query_d.filter(func.lower(Department.institution_name) == institution_name.strip().lower())
+        query_p = query_p.filter(func.lower(Programme.institution_name) == institution_name.strip().lower())
     faculties = query_f.order_by(Faculty.name).all()
     departments = query_d.order_by(Department.name).all()
     programmes = query_p.order_by(Programme.name).all()
@@ -132,7 +133,7 @@ def create_faculty(body: FacultyBody, user: User = Depends(get_current_user), db
     institution = _lecturer(user)
     name = body.name.strip()
     code = (body.code or "").strip().upper() or None
-    if db.query(Faculty).filter(Faculty.institution_name.ilike(institution), Faculty.name.ilike(name)).first():
+    if db.query(Faculty).filter(func.lower(Faculty.institution_name) == institution.strip().lower(), Faculty.name.ilike(name)).first():
         raise HTTPException(409, "This faculty already exists in your institution")
     row = Faculty(name=name, code=code, dean=(body.dean or "").strip() or None, institution_name=institution)
     row = _save(db, user, row, "create", "faculty_directory", name)
@@ -167,7 +168,7 @@ def create_department(body: DepartmentBody, user: User = Depends(get_current_use
     institution = _lecturer(user)
     _faculty_in_tenant(db, body.faculty_id, institution)
     name = body.name.strip(); code = (body.code or "").strip().upper() or None
-    if db.query(Department).filter(Department.institution_name.ilike(institution), Department.faculty_id == body.faculty_id, Department.name.ilike(name)).first():
+    if db.query(Department).filter(func.lower(Department.institution_name) == institution.strip().lower(), Department.faculty_id == body.faculty_id, Department.name.ilike(name)).first():
         raise HTTPException(409, "This department already exists under that faculty")
     row = Department(name=name, code=code, faculty_id=body.faculty_id, head=(body.head or "").strip() or None, institution_name=institution)
     row = _save(db, user, row, "create", "department_directory", name)
@@ -203,7 +204,7 @@ def create_programme(body: ProgrammeBody, user: User = Depends(get_current_user)
     institution = _lecturer(user)
     department = _department_in_tenant(db, body.department_id, institution)
     code = (body.code or "").strip().upper() or None
-    if db.query(Programme).filter(Programme.institution_name.ilike(institution), Programme.department_id == department.id, Programme.name.ilike(body.name.strip())).first():
+    if db.query(Programme).filter(func.lower(Programme.institution_name) == institution.strip().lower(), Programme.department_id == department.id, Programme.name.ilike(body.name.strip())).first():
         raise HTTPException(409, "This programme already exists in the department")
     row = Programme(name=body.name.strip(), code=code, department_id=department.id, award=(body.award or "").strip() or None, duration_years=body.duration_years, institution_name=institution)
     row = _save(db, user, row, "create", "programme_directory", row.name)
