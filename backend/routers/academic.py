@@ -271,13 +271,9 @@ def get_course(course_id: int, user: User = Depends(get_current_user), db: Sessi
 
 @router.post("/academic/courses", status_code=201)
 def create_course(body: CourseCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if user.role not in ("admin", "faculty"):
-        raise HTTPException(403, "Only lecturers and administrators can create courses")
-    lecturer_id = user.id if user.role == "faculty" else body.lecturer_id
-    if not lecturer_id:
-        raise HTTPException(422, "Select a lecturer for this course")
-    if user.role == "faculty" and body.lecturer_id not in (None, user.id):
-        raise HTTPException(403, "Lecturers can only create courses under their own account")
+    if user.role != "faculty":
+        raise HTTPException(403, "Only lecturers can create teaching courses. Administrators have monitoring and directory-management access.")
+    lecturer_id = user.id
     lecturer = db.query(User).filter(User.id == lecturer_id, User.role == "faculty").first()
     if not lecturer:
         raise HTTPException(404, "Lecturer not found")
