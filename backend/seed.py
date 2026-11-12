@@ -156,12 +156,17 @@ def _seed_grade_bands(db: Session) -> None:
 
 
 def seed_data():
-    # Never inject demonstration users, timetables or catalogue rows into a real institution.
-    # Demo records are opt-in for local development only.
+    # Demo records are disabled by default. On a production deployment they
+    # require TWO explicit opt-ins, and must only be enabled against a separate
+    # demo database (never an institution's live database).
     environment = os.getenv("ENVIRONMENT", "development").lower()
     demo_enabled = os.getenv("SEED_DEMO_DATA", "false").lower() == "true"
+    allow_demo_in_production = (
+        os.getenv("ALLOW_DEMO_SEED_IN_PRODUCTION", "false").lower() == "true"
+    )
+    production_demo_allowed = environment != "production" or allow_demo_in_production
     db: Session = SessionLocal()
-    if not demo_enabled or environment == "production":
+    if not demo_enabled or not production_demo_allowed:
         admin_email = os.getenv("BOOTSTRAP_ADMIN_EMAIL", "").strip().lower()
         admin_password = os.getenv("BOOTSTRAP_ADMIN_PASSWORD", "")
         if admin_email and admin_password:
@@ -177,7 +182,8 @@ def seed_data():
     # The three primary demo identities are configured in backend/.env. In a
     # development database they are upserted on every startup so the documented
     # names, roles and passwords cannot drift from the environment file.
-    # This block is never reached in production.
+    # In production this block is reachable only after the explicit opt-in above.
+    # Keep this deployment connected to a dedicated, disposable demo database.
     structure = _seed_structure(db)
 
     admin_email = os.getenv("DEMO_ADMIN_EMAIL", "admin@smartcampus.com").strip().lower()
