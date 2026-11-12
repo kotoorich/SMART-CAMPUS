@@ -247,6 +247,7 @@ def run_migrations() -> None:
     """Apply every migration in order. Safe to call on every start-up."""
     add_missing_columns()
     backfill_directory_institutions()
+    relax_global_directory_uniqueness()
     backfill_academic_directory_links()
     add_identity_indexes()
     retire_face_column()
@@ -268,3 +269,29 @@ def backfill_directory_institutions() -> None:
                     "UPDATE " + table + " SET institution_name = 'University of Cape Coast' "
                     "WHERE institution_name IS NULL OR trim(institution_name) = ''"
                 ))
+
+
+
+def relax_global_directory_uniqueness() -> None:
+    """Replace global directory-code uniqueness with institution-scoped indexes."""
+    tables = set(inspect(engine).get_table_names())
+    with engine.begin() as conn:
+        for table, column in (
+            ("faculties", "name"), ("faculties", "code"),
+            ("departments", "code"), ("programmes", "code"),
+        ):
+            if table not in tables:
+                continue
+            for index in inspect(engine).get_indexes(table):
+                if index.get("unique") and index.get("column_names") == [column]:
+                    conn.execute(text("DROP INDEX IF EXISTS " + index["name"]))
+        index_sql = (
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_faculties_institution_name ON faculties (institution_name, name)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_faculties_institution_code ON faculties (institution_name, code)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_departments_institution_code ON departments (institution_name, code)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_programmes_institution_code ON programmes (institution_name, code)",
+        )
+        for statement in index_sql:
+            table = statement.split(" ON ", 1)[1].split(" ", 1)[0]
+            if table in tables:
+                conn.execute(text(statement))
