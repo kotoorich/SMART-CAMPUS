@@ -278,7 +278,7 @@ def relax_global_directory_uniqueness() -> None:
     with engine.begin() as conn:
         for table, column in (
             ("faculties", "name"), ("faculties", "code"),
-            ("departments", "code"), ("programmes", "code"),
+            ("departments", "code"), ("programmes", "code"), ("courses", "code"),
         ):
             if table not in tables:
                 continue
@@ -290,6 +290,7 @@ def relax_global_directory_uniqueness() -> None:
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_faculties_institution_code ON faculties (institution_name, code)",
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_departments_institution_code ON departments (institution_name, code)",
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_programmes_institution_code ON programmes (institution_name, code)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_courses_institution_code ON courses (institution_name, code)",
         )
         for statement in index_sql:
             table = statement.split(" ON ", 1)[1].split(" ", 1)[0]
