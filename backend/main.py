@@ -182,6 +182,8 @@ def student_signup(request: StudentSignup, db: Session = Depends(get_db)):
     if db.query(User).filter(User.identity_document_hash == document_hash).first():
         raise HTTPException(409, "This identity document is already associated with an account")
     legacy_ghana_hash = _ghana_hash(document_number) if document_type == "ghana_card" else None
+    if legacy_ghana_hash and db.query(User).filter(User.ghana_card_hash == legacy_ghana_hash).first():
+        raise HTTPException(409, "This Ghana Card is already associated with an account")
     if not request.consent_biometrics:
         raise HTTPException(422, "Consent is required to collect and process your registration selfie")
     photo_ref = save_selfie(request.registration_selfie)
