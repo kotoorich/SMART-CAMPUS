@@ -99,6 +99,9 @@ class User(Base):
     staff_id        = Column(String, nullable=True, unique=True, index=True)
     ghana_card_hash = Column(String, nullable=True, unique=True, index=True)
     ghana_card_last4 = Column(String, nullable=True)
+    identity_document_type = Column(String, nullable=True, default="ghana_card")
+    identity_document_hash = Column(String, nullable=True, unique=True, index=True)
+    identity_document_last4 = Column(String, nullable=True)
     registration_photo_ref = Column(String, nullable=True)
     biometric_method = Column(String, nullable=True)  # selfie | device_biometric | pending
     identity_status = Column(String, nullable=False, default="pending")  # pending | verified | rejected
