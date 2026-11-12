@@ -17,7 +17,10 @@ export default function AcademicStructure() {
   const [programmeForm, setProgrammeForm] = useState(emptyProgramme);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");\n  const [resetInstitution, setResetInstitution] = useState("");\n  const [resetPreview, setResetPreview] = useState(null);\n  const [resetLoading, setResetLoading] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [resetInstitution, setResetInstitution] = useState("");
+  const [resetPreview, setResetPreview] = useState(null);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
