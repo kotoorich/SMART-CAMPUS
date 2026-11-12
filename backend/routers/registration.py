@@ -138,6 +138,8 @@ def lecturer_signup(body: LecturerSignup, db: Session = Depends(get_db)):
     if db.query(User).filter(User.identity_document_hash == document_hash).first():
         raise HTTPException(409, "This identity document is already associated with an account")
     legacy_ghana_hash = _ghana_hash(document_number) if document_type == "ghana_card" else None
+    if legacy_ghana_hash and db.query(User).filter(User.ghana_card_hash == legacy_ghana_hash).first():
+        raise HTTPException(409, "This Ghana Card is already associated with an account")
     department = None
     if body.department_id:
         department = db.query(Department).filter(Department.id == body.department_id).first()
