@@ -207,3 +207,72 @@
 .app-header-back{display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#33486b;font-size:12px;font-weight:700;white-space:nowrap}
 .app-header-back:hover{background:#f5f8fd;border-color:#c3d2ea}
 @media(max-width:620px){.app-header-back span{display:none}.app-header-back{width:38px;height:38px;justify-content:center;padding:0}.app-header-left{gap:8px}}
+
+
+/* Consistent authenticated workspace navigation */
+.app-shell{display:flex;min-height:100vh;overflow-x:clip}
+.app-main{min-width:0;flex:1}
+.campus-sidebar{position:sticky;top:0;z-index:30;display:flex;flex:0 0 274px;flex-direction:column;width:274px;height:100vh;min-height:100vh;padding:25px 16px 18px;background:#102a43;color:#e7eef9;box-shadow:10px 0 34px rgba(10,35,70,.09);overflow:hidden;transition:flex-basis .24s ease,width .24s ease,padding .24s ease,transform .24s ease}
+.sidebar-brand{display:flex;align-items:center;gap:11px;min-height:48px;padding:0 7px 20px;border-bottom:1px solid rgba(255,255,255,.1);white-space:nowrap}
+.sidebar-brand-mark{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:12px;background:#e8effa;color:#123a75}
+.sidebar-brand strong{display:block;color:#fff;font:800 17px Manrope,sans-serif;letter-spacing:-.04em}
+.sidebar-brand small{display:block;margin-top:3px;color:#9db2cf;font-size:8px;font-weight:800;letter-spacing:.15em}
+.sidebar-workspace{display:flex;align-items:center;gap:9px;margin:17px 4px 19px;padding:10px 11px;border:1px solid rgba(255,255,255,.09);border-radius:11px;background:rgba(255,255,255,.045);color:#c3d2e5;font-size:11px;font-weight:650;white-space:nowrap}
+.workspace-dot,.sidebar-user-status{width:7px;height:7px;flex:none;border-radius:50%;background:#70d6a0;box-shadow:0 0 0 4px rgba(112,214,160,.12)}
+.sidebar-navigation{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:0 2px 12px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
+.sidebar-group{margin:0 0 19px}
+.sidebar-group>p{margin:0 0 8px;padding:0 10px;color:#829ab9;font-size:9px;font-weight:850;letter-spacing:.16em;white-space:nowrap}
+.sidebar-link{position:relative;display:flex;align-items:center;gap:11px;min-height:42px;margin:3px 0;padding:0 11px;border:1px solid transparent;border-radius:10px;color:#c5d3e5;text-decoration:none;font-size:12px;font-weight:600;white-space:nowrap;transition:background .18s ease,color .18s ease,border-color .18s ease}
+.sidebar-link>svg{flex:none;color:#9eb3cf}
+.sidebar-link:hover{background:rgba(255,255,255,.075);color:#fff}
+.sidebar-link.is-active{border-color:rgba(177,204,243,.16);background:rgba(202,222,255,.13);color:#fff}
+.sidebar-link.is-active>svg{color:#b9d4ff}
+.sidebar-link-indicator{width:5px;height:5px;margin-left:auto;border-radius:50%;background:transparent}
+.sidebar-link.is-active .sidebar-link-indicator{background:#a8c9ff;box-shadow:0 0 0 4px rgba(168,201,255,.1)}
+.sidebar-user{display:flex;align-items:center;gap:10px;min-width:0;margin-top:12px;padding:13px 5px 2px;border-top:1px solid rgba(255,255,255,.1)}
+.sidebar-avatar{display:grid;place-items:center;flex:none;width:35px;height:35px;border-radius:11px;background:#e8effa;color:#123a75;font-size:11px;font-weight:850}
+.sidebar-user-copy{display:grid;min-width:0;gap:3px}
+.sidebar-user-copy b{overflow:hidden;color:#fff;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-user-copy small{color:#9eb1cb;font-size:10px}
+.sidebar-user-status{margin-left:auto;width:6px;height:6px}
+.app-header{height:70px;min-width:0;padding:0 30px;gap:16px}
+.app-header-left,.app-header-right{display:flex;align-items:center;min-width:0;gap:13px}
+.app-header-menu,.app-header-back{display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:none;height:38px;border:1px solid #e1e8f1;border-radius:10px;background:#fff;color:#334a68}
+.app-header-menu{width:40px}
+.app-header-back{padding:0 11px;font-size:11px;font-weight:700}
+.app-header-menu:hover,.app-header-back:hover{border-color:#b8cbe4;background:#f7faff}
+.app-header-welcome{display:grid;gap:2px;min-width:0}
+.app-header-welcome>span{font-size:10px;color:#7d8ca2}
+.app-header-welcome>strong{overflow:hidden;color:#172b3a;font-size:13px;text-overflow:ellipsis;white-space:nowrap}
+.app-header-right{gap:12px}
+.app-header-right .sc-role-pill{white-space:nowrap}
+.app-nav-scrim{display:none}
+.app-shell.nav-collapsed .campus-sidebar{flex-basis:0;width:0;padding-left:0;padding-right:0;border:0}
+.app-shell.nav-collapsed .campus-sidebar>*{opacity:0;pointer-events:none}
+.app-content{min-width:0}
+@media(max-width:1100px){.app-header{padding:0 20px}.app-content{padding-left:24px;padding-right:24px}}
+@media(max-width:900px){
+ .app-shell{display:flex;min-height:100vh}
+ .campus-sidebar{position:fixed;left:0;top:0;bottom:0;width:min(290px,86vw);height:100dvh;min-height:0;flex:0 0 auto;padding:22px 15px 17px;transform:translateX(-105%);box-shadow:18px 0 55px rgba(3,17,39,.25);transition:transform .25s ease}
+ .app-shell.nav-open .campus-sidebar{width:min(290px,86vw);transform:translateX(0)}
+ .app-shell.nav-collapsed .campus-sidebar{width:min(290px,86vw);padding:22px 15px 17px}
+ .app-shell.nav-open .campus-sidebar>*{opacity:1;pointer-events:auto}
+ .app-nav-scrim{display:block;position:fixed;inset:0;z-index:29;border:0;border-radius:0;background:rgba(5,18,38,.48);opacity:0;pointer-events:none;transition:opacity .2s ease}
+ .app-shell.nav-open .app-nav-scrim{opacity:1;pointer-events:auto}
+ .app-header{height:64px;padding:0 16px}
+ .app-header-right{gap:8px}
+ .app-content{padding:22px 18px 38px}
+}
+@media(max-width:560px){
+ .app-header{padding:0 11px;gap:8px}
+ .app-header-left,.app-header-right{gap:7px}
+ .app-header-back{height:35px;padding:0 8px}
+ .app-header-back span{display:none}
+ .app-header-welcome>span{font-size:9px}
+ .app-header-welcome>strong{max-width:112px;font-size:11px}
+ .app-header-right .sc-role-pill{display:none}
+ .app-header-right .logout-button{padding:8px 9px!important;font-size:0}
+ .app-header-right .logout-button svg{width:16px;height:16px}
+ .app-content{padding:17px 12px 30px}
+}
+@media(prefers-reduced-motion:reduce){.campus-sidebar,.app-nav-scrim{transition:none}}
