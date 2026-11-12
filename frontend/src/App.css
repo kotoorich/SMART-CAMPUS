@@ -276,3 +276,153 @@
  .app-content{padding:17px 12px 30px}
 }
 @media(prefers-reduced-motion:reduce){.campus-sidebar,.app-nav-scrim{transition:none}}
+
+
+/* Mobile registration form overflow correction (student and lecturer). */
+.signup-auth-screen,
+.signup-auth-screen * {
+  box-sizing: border-box;
+}
+.signup-auth-screen {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+.signup-auth-layout {
+  width: 100%;
+  max-width: 1240px;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+}
+.signup-auth-layout > *,
+.signup-auth-layout .auth-card-wrap,
+.signup-auth-layout .signup-form-card {
+  min-width: 0;
+  max-width: 100%;
+}
+.signup-form-card {
+  width: 100%;
+  overflow: hidden;
+}
+.signup-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+.signup-fields label,
+.signup-fields input,
+.signup-fields select,
+.signup-fields textarea {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+.signup-fields input,
+.signup-fields select,
+.signup-fields textarea {
+  box-sizing: border-box;
+}
+.signup-selfie-block,
+.signup-webcam,
+.signup-selfie-preview {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.signup-webcam {
+  position: relative;
+}
+.signup-webcam video,
+.signup-selfie-preview img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 100%;
+  object-fit: cover;
+}
+.signup-upload-fallback {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.signup-upload-fallback input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.signup-consent,
+.signup-privacy-note,
+.signup-payment-note {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .signup-auth-screen {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .signup-auth-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 20px;
+    padding: 26px 0 32px;
+  }
+  .signup-auth-layout .auth-story,
+  .signup-auth-layout .auth-card-wrap {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    align-self: stretch;
+  }
+  .signup-auth-layout .signup-form-card {
+    width: 100%;
+    min-width: 0;
+    padding: 22px 16px 20px;
+  }
+  .signup-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 13px;
+  }
+  .signup-wide {
+    grid-column: auto;
+  }
+  .signup-webcam {
+    aspect-ratio: 4 / 3;
+    height: auto;
+  }
+  .signup-webcam video {
+    height: 100%;
+  }
+  .signup-upload-fallback {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .signup-upload-fallback input {
+    font-size: 12px;
+  }
+}
+@media (max-width: 380px) {
+  .signup-auth-screen {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .signup-auth-layout .signup-form-card {
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+  .signup-auth-screen .auth-topbar {
+    gap: 8px;
+  }
+  .signup-auth-screen .brand-lockup {
+    min-width: 0;
+  }
+  .signup-auth-screen .signup-back {
+    flex: 0 0 auto;
+  }
+}
