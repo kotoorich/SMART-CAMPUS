@@ -2,16 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { ArrowLeft, ArrowRight, Camera, CheckCircle2, GraduationCap, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getAcademicDirectory, signupStudent } from "../../services/api";
+import { getAcademicDirectory, getInstitutions, signupStudent } from "../../services/api";
 
 export default function StudentSignupManaged() {
   const navigate=useNavigate(); const webcam=useRef(null);
   const [directory,setDirectory]=useState({faculties:[],departments:[],programmes:[]});
+  const [institutions,setInstitutions]=useState([]);
   const [directoryError,setDirectoryError]=useState(""); const [selfie,setSelfie]=useState("");
   const [cameraReady,setCameraReady]=useState(false); const [consent,setConsent]=useState(false);
   const [loading,setLoading]=useState(false); const [error,setError]=useState(""); const [done,setDone]=useState(null);
-  const [form,setForm]=useState({name:"",index_number:"",email:"",phone:"",identity_document_type:"ghana_card",identity_document_number:"",password:"",institution_name:"University of Cape Coast",programme_id:"",academic_year:"",level:"100"});
-  useEffect(()=>{getAcademicDirectory().then(setDirectory).catch(e=>setDirectoryError(e.message||"Academic directory unavailable."))},[]);
+  const [form,setForm]=useState({name:"",index_number:"",email:"",phone:"",identity_document_type:"ghana_card",identity_document_number:"",password:"",institution_name:"",programme_id:"",academic_year:"",level:"100"});
+  useEffect(()=>{getInstitutions().then(data=>setInstitutions(data.institutions||[])).catch(e=>setDirectoryError(e.message||"Institution list unavailable."))},[]);
+  useEffect(()=>{if(!form.institution_name){setDirectory({faculties:[],departments:[],programmes:[]});return}getAcademicDirectory(false,form.institution_name).then(setDirectory).catch(e=>setDirectoryError(e.message||"Academic directory unavailable."))},[form.institution_name]);
   const selected=directory.programmes.find(p=>String(p.id)===String(form.programme_id));
   const department=directory.departments.find(d=>d.id===selected?.department_id);
   const faculty=directory.faculties.find(f=>f.id===department?.faculty_id);
@@ -27,7 +29,7 @@ export default function StudentSignupManaged() {
       <div className="signup-fields">
         <label>Full legal name<input name="name" value={form.name} onChange={change} required autoComplete="name"/></label>
         <label>Index number<input name="index_number" value={form.index_number} onChange={change} required placeholder="e.g. PSITC/22/001"/></label>
-        <label className="signup-wide">Institution<input name="institution_name" value={form.institution_name} onChange={change} required/></label>
+        <label className="signup-wide">Institution<select name="institution_name" value={form.institution_name} onChange={e=>{setForm(v=>({...v,institution_name:e.target.value,programme_id:""}));setDirectoryError("");}} required><option value="">Select your institution</option>{institutions.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
         <label className="signup-wide">Academic programme<select name="programme_id" value={form.programme_id} onChange={change} required><option value="">Select your programme</option>{directory.programmes.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
         <label>Faculty / School<input value={faculty?.name||""} readOnly placeholder="Selected automatically"/></label>
         <label>Department<input value={department?.name||""} readOnly placeholder="Selected automatically"/></label>
@@ -42,7 +44,7 @@ export default function StudentSignupManaged() {
       <div className="signup-selfie-block"><div className="auth-label"><Camera size={15}/> Registration selfie</div>{selfie?<div className="signup-selfie-preview"><img src={selfie} alt="Registration selfie"/><button type="button" onClick={()=>setSelfie("")}>Retake selfie</button></div>:<><div className="signup-webcam"><Webcam ref={webcam} audio={false} screenshotFormat="image/jpeg" screenshotQuality={0.78} videoConstraints={{width:640,height:480,facingMode:"user"}} onUserMedia={()=>setCameraReady(true)} onUserMediaError={()=>setCameraReady(false)}/></div><button type="button" className="auth-submit" disabled={!cameraReady} onClick={capture}><Camera size={16}/> Capture selfie</button><label className="signup-upload-fallback">Camera unavailable? Upload selfie<input type="file" accept="image/jpeg,image/png,image/webp" capture="user" onChange={upload}/></label></>}
         <label className="signup-consent"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/> I consent to secure collection and processing of my selfie.</label><small className="signup-privacy-note">The selfie is evidence for authorised review. Automated facial recognition is not currently performed.</small></div>
       {error&&<div className="auth-error" role="alert">{error}</div>}
-      <button className="auth-submit" type="submit" disabled={loading||!directory.programmes.length}>{loading?"Submitting…":<>Submit registration <ArrowRight size={17}/></>}</button>
+      <button className="auth-submit" type="submit" disabled={loading||!form.institution_name||!directory.programmes.length}>{loading?"Submitting…":<>Submit registration <ArrowRight size={17}/></>}</button>
       <p className="auth-register">Already registered? <button type="button" onClick={()=>navigate("/login")}>Sign in</button></p>
     </>}</form></div></section></main>;
 }
