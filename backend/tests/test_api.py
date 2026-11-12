@@ -182,6 +182,32 @@ def test_student_signup_with_institution_profile():
     assert res.status_code == 409
 
 
+def test_student_passport_registration_uses_hashed_identity_document():
+    programme = client.get("/public/academic-directory").json()["programmes"][0]
+    department = next(d for d in client.get("/public/academic-directory").json()["departments"] if d["id"] == programme["department_id"])
+    faculty = next(x for x in client.get("/public/academic-directory").json()["faculties"] if x["id"] == department["faculty_id"])
+    response = client.post("/student/signup", json={
+        "name": "Passport Applicant", "index_number": "2024998", "email": "passport.applicant@example.com",
+        "password": "StrongPass@1", "phone": "+233240000997",
+        "identity_document_type": "passport", "identity_document_number": "P1234567",
+        "registration_selfie": _selfie_b64(), "consent_biometrics": True,
+        "institution_name": "Example University", "faculty_name": faculty["name"],
+        "department_name": department["name"], "programme_name": programme["name"],
+        "programme_id": programme["id"], "academic_year": "2026/2027", "level": 100,
+    })
+    assert response.status_code == 200, response.text
+    db = SessionLocal()
+    try:
+        from models import User
+        record = db.query(User).filter(User.email == "passport.applicant@example.com").first()
+        assert record.identity_document_type == "passport"
+        assert record.identity_document_hash
+        assert record.identity_document_last4 == "4567"
+        assert record.ghana_card_hash is None
+    finally:
+        db.close()
+
+
 # ── Course + batch + timetable integration ──────────────────────────────────
 def test_course_timetable_integration(admin, faculty, student):
     lecturer_id = _lecturer_id(admin)
