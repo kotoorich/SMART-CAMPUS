@@ -286,6 +286,8 @@ def create_course(body: CourseCreate, user: User = Depends(get_current_user), db
     programme = db.query(Programme).filter(Programme.id == requested_programme_id).first()
     if not programme:
         raise HTTPException(404, "Programme not found")
+    if (programme.institution_name or "").strip().casefold() != (lecturer.institution_name or "").strip().casefold():
+        raise HTTPException(403, "You can only create courses for programmes in your institution")
     if user.role == "faculty" and user.department_id and programme.department_id != user.department_id:
         raise HTTPException(403, "You can only create courses for programmes in your assigned department")
     data = body.model_dump(exclude={"code", "prerequisite_ids", "programme_ids", "batch_names"})
@@ -309,6 +311,9 @@ def create_course(body: CourseCreate, user: User = Depends(get_current_user), db
     if len(linked_programmes) != len(programme_ids):
         db.rollback()
         raise HTTPException(422, "One or more selected programmes do not exist")
+    if any((p.institution_name or "").strip().casefold() != (lecturer.institution_name or "").strip().casefold() for p in linked_programmes):
+        db.rollback()
+        raise HTTPException(403, "A course cannot be linked to programmes from another institution")
     if user.role == "faculty" and user.department_id and any(p.department_id != user.department_id for p in linked_programmes):
         db.rollback()
         raise HTTPException(403, "You can only offer courses to programmes in your assigned department")
