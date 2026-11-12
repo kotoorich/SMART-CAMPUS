@@ -35,7 +35,7 @@ else:
     connect_args = {}
     if "sslmode=" not in DATABASE_URL and "localhost" not in DATABASE_URL \
             and "127.0.0.1" not in DATABASE_URL:
-        connect_args["sslmode"] = os.environ.get("DB_SSLMODE", "require")
+        connect_args["sslmode"] = "require"
     engine = create_engine(
         DATABASE_URL,
         pool_pre_ping=True,
