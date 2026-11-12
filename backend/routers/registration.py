@@ -126,6 +126,11 @@ def lecturer_signup(body: LecturerSignup, db: Session = Depends(get_db)):
     if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
         raise HTTPException(422, "Enter a valid email address")
     _email_available(db, email)
+    institution_name = " ".join(body.institution_name.split())
+    if len(institution_name) < 2:
+        raise HTTPException(422, "Enter your institution name")
+    known_institutions = db.query(User.institution_name).filter(User.institution_name.isnot(None)).distinct().all()
+    institution_name = next((row[0] for row in known_institutions if row[0] and row[0].strip().casefold() == institution_name.casefold()), institution_name)
     staff_id = body.staff_id.strip().upper()
     if db.query(User).filter(User.staff_id == staff_id).first():
         raise HTTPException(409, "Staff ID already registered")
@@ -144,7 +149,7 @@ def lecturer_signup(body: LecturerSignup, db: Session = Depends(get_db)):
     lecturer = User(name=body.name.strip(), email=email, password=hash_password(body.password),
                     role="faculty", department=None,
                     department_id=None,
-                    institution_name=body.institution_name.strip(), faculty_name=None,
+                    institution_name=institution_name, faculty_name=None,
                     programme_name=None, designation=(body.designation or "").strip() or None,
                     phone=body.phone.strip(), staff_id=staff_id,
                     ghana_card_hash=legacy_ghana_hash, ghana_card_last4=document_number[-4:] if document_type == "ghana_card" else None,
