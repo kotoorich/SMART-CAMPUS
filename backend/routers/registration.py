@@ -74,7 +74,9 @@ class LecturerSignup(BaseModel):
     department_name: str = Field(min_length=2, max_length=160)
     programme_name: str = Field(min_length=2, max_length=180)
     designation: Optional[str] = Field(default=None, max_length=120)
-    ghana_card_number: str = Field(min_length=10, max_length=24)
+    identity_document_type: str = Field(default="ghana_card", pattern="^(ghana_card|passport)$")
+    identity_document_number: str = Field(min_length=6, max_length=32)
+    ghana_card_number: Optional[str] = None
     registration_selfie: str = Field(min_length=100)
     biometric_method: str = Field(default="selfie", pattern="^(selfie|device_biometric)$")
     consent_biometrics: bool = False
@@ -120,10 +122,11 @@ def lecturer_signup(body: LecturerSignup, db: Session = Depends(get_db)):
     staff_id = body.staff_id.strip().upper()
     if db.query(User).filter(User.staff_id == staff_id).first():
         raise HTTPException(409, "Staff ID already registered")
-    card = _clean_ghana_card(body.ghana_card_number)
-    card_hash = _ghana_hash(card)
-    if db.query(User).filter(User.ghana_card_hash == card_hash).first():
-        raise HTTPException(409, "This Ghana Card is already associated with an account")
+    document_type, document_number = _clean_identity_document(body.identity_document_type, body.identity_document_number)
+    document_hash = _ghana_hash(document_type + ":" + document_number)
+    if db.query(User).filter(User.identity_document_hash == document_hash).first():
+        raise HTTPException(409, "This identity document is already associated with an account")
+    legacy_ghana_hash = _ghana_hash(document_number) if document_type == "ghana_card" else None
     department = None
     if body.department_id:
         department = db.query(Department).filter(Department.id == body.department_id).first()
@@ -140,7 +143,8 @@ def lecturer_signup(body: LecturerSignup, db: Session = Depends(get_db)):
                     institution_name=body.institution_name.strip(), faculty_name=(body.faculty_name or "").strip() or None,
                     programme_name=(body.programme_name or "").strip() or None, designation=(body.designation or "").strip() or None,
                     phone=body.phone.strip(), staff_id=staff_id,
-                    ghana_card_hash=card_hash, ghana_card_last4=card[-4:],
+                    ghana_card_hash=legacy_ghana_hash, ghana_card_last4=document_number[-4:] if document_type == "ghana_card" else None,
+                    identity_document_type=document_type, identity_document_hash=document_hash, identity_document_last4=document_number[-4:],
                     registration_photo_ref=photo_ref, biometric_method=body.biometric_method,
                     identity_status="pending", is_approved=False,
                     registration_fee_required=(not free and amount > 0))
