@@ -77,7 +77,7 @@ def public_institutions(db: Session = Depends(get_db)):
 @router.get("/public/academic-directory")
 def public_academic_directory(institution_name: str | None = None, db: Session = Depends(get_db)):
     if not institution_name or not institution_name.strip():
-        return {"faculties": [], "departments": [], "programmes": []}
+        return _directory(db)
     return _directory(db, institution_name.strip())
 
 
