@@ -75,7 +75,7 @@ class LecturerSignup(BaseModel):
     programme_name: str = Field(min_length=2, max_length=180)
     designation: Optional[str] = Field(default=None, max_length=120)
     identity_document_type: str = Field(default="ghana_card", pattern="^(ghana_card|passport)$")
-    identity_document_number: str = Field(min_length=6, max_length=32)
+    identity_document_number: Optional[str] = Field(default=None, min_length=6, max_length=32)
     ghana_card_number: Optional[str] = None
     registration_selfie: str = Field(min_length=100)
     biometric_method: str = Field(default="selfie", pattern="^(selfie|device_biometric)$")
@@ -122,7 +122,7 @@ def lecturer_signup(body: LecturerSignup, db: Session = Depends(get_db)):
     staff_id = body.staff_id.strip().upper()
     if db.query(User).filter(User.staff_id == staff_id).first():
         raise HTTPException(409, "Staff ID already registered")
-    document_type, document_number = _clean_identity_document(body.identity_document_type, body.identity_document_number)
+    document_type, document_number = _clean_identity_document(body.identity_document_type, body.identity_document_number or body.ghana_card_number)
     document_hash = _ghana_hash(document_type + ":" + document_number)
     if db.query(User).filter(User.identity_document_hash == document_hash).first():
         raise HTTPException(409, "This identity document is already associated with an account")
