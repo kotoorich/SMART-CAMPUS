@@ -19,8 +19,9 @@ class Faculty(Base):
     __tablename__ = "faculties"
 
     id         = Column(Integer, primary_key=True, index=True)
-    name       = Column(String, nullable=False, unique=True, index=True)
-    code       = Column(String, nullable=True, unique=True, index=True)
+    name       = Column(String, nullable=False, index=True)
+    code       = Column(String, nullable=True, index=True)
+    institution_name = Column(String, nullable=False, index=True, default="University of Cape Coast")
     dean       = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -30,7 +31,8 @@ class Department(Base):
 
     id         = Column(Integer, primary_key=True, index=True)
     name       = Column(String, nullable=False, index=True)
-    code       = Column(String, nullable=True, unique=True, index=True)
+    code       = Column(String, nullable=True, index=True)
+    institution_name = Column(String, nullable=False, index=True, default="University of Cape Coast")
     faculty_id = Column(Integer, ForeignKey("faculties.id"), nullable=True, index=True)
     head       = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -42,7 +44,8 @@ class Programme(Base):
 
     id            = Column(Integer, primary_key=True, index=True)
     name          = Column(String, nullable=False, index=True)
-    code          = Column(String, nullable=True, unique=True, index=True)
+    code          = Column(String, nullable=True, index=True)
+    institution_name = Column(String, nullable=False, index=True, default="University of Cape Coast")
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True, index=True)
     award         = Column(String, nullable=True)   # BSc / BA / MPhil …
     duration_years = Column(Integer, nullable=True, default=4)
