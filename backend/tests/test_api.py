@@ -82,6 +82,18 @@ def test_health():
     assert res.json()["status"] == "ok"
 
 
+def test_health_reports_database_outage_as_503(monkeypatch):
+    class BrokenConnection:
+        def __enter__(self):
+            raise RuntimeError("database unavailable")
+        def __exit__(self, *args):
+            return False
+    monkeypatch.setattr(main.engine, "connect", lambda: BrokenConnection())
+    response = client.get("/health")
+    assert response.status_code == 503
+    assert response.json() == {"status": "degraded", "database": False}
+
+
 def test_login_all_three_roles():
     for creds in (ADMIN, FACULTY, STUDENT):
         res = client.post("/login", json={"email": creds[0], "password": creds[1], "selected_role": creds[2]})
@@ -305,6 +317,37 @@ def test_lecturer_can_edit_own_course_details(admin, faculty):
                         json={"title": "Hijacked"}).status_code == 403
     assert client.delete(f"/academic/courses/{other['id']}", headers=admin).status_code == 200
     assert client.delete(f"/academic/courses/{mine['id']}", headers=admin).status_code == 200
+
+
+def test_room_booking_conflict_between_lecturers(admin, faculty):
+    programme_id = client.get("/public/academic-directory").json()["programmes"][0]["id"]
+    lecturer_id = _lecturer_id(admin)
+    first = client.post("/academic/courses", headers=faculty, json={
+        "title": "Room Conflict First", "code": "ROOM901", "programme_id": programme_id,
+        "level": "100", "semester": "First Semester", "academic_year": "2026/2027",
+    }).json()
+    second_lecturer = client.post("/admin/faculty", headers=admin, json={
+        "name": "Room Conflict Lecturer", "email": "room.conflict@example.com",
+        "password": "Lecturer@12345", "staff_id": "ROOM-LECT-1",
+        "institution_name": "Smart Campus",
+    })
+    assert second_lecturer.status_code == 201, second_lecturer.text
+    second_auth = auth(("room.conflict@example.com", "Lecturer@12345", "faculty"))
+    second = client.post("/academic/courses", headers=second_auth, json={
+        "title": "Room Conflict Second", "code": "ROOM902", "programme_id": programme_id,
+        "level": "100", "semester": "First Semester", "academic_year": "2026/2027",
+    }).json()
+    assert first["lecturer_id"] == lecturer_id
+    booked = client.post(f"/faculty/courses/{first['id']}/schedule", headers=faculty, json={
+        "day_of_week": 0, "start_time": "09:00", "end_time": "10:00",
+        "building": "Science Block", "room_no": "ROOM-X", "class_type": "theory",
+    })
+    assert booked.status_code == 201, booked.text
+    conflict = client.post(f"/faculty/courses/{second['id']}/schedule", headers=second_auth, json={
+        "day_of_week": 0, "start_time": "09:30", "end_time": "10:30",
+        "building": "Science Block", "room_no": "ROOM-X", "class_type": "theory",
+    })
+    assert conflict.status_code == 409, conflict.text
 
 
 def test_create_course_with_programme_id_derives_department(admin, faculty):
