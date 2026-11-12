@@ -16,7 +16,7 @@ import {
   listMaterials, createMaterial, deleteMaterial, updateMaterial, listAssessments, createAssessment, deleteAssessment,
   updateAssessment, enterMarks, releaseAssessment, getAssessmentResults,
   updateMyCourseSchedule, deleteMyCourseSchedule, changeBatch, getMyResults,
-  listBatches, createBatch, updateBatch, deleteBatch,
+  listBatches, createBatch, updateBatch, deleteBatch, getAcademicDirectory,
 } from "../services/api"
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -457,7 +457,8 @@ function LecturerWorkspace({ fb }) {
   const [editAssessmentId, setEditAssessmentId] = useState(null)
   const [marksModal, setMarksModal] = useState(null)   // { assessment, rows:[{student_id,name,index_number,score}], busy }
   const [marksBusy, setMarksBusy] = useState(false)
-  const [courseForm, setCourseForm] = useState({ title: "", code: "", programme_name: "", department: "", level: "100", semester: "First Semester", academic_year: "", credit_hours: 3 })
+  const [directory, setDirectory] = useState({ faculties: [], departments: [], programmes: [] })
+  const [courseForm, setCourseForm] = useState({ title: "", code: "", programme_id: "", programme_name: "", department: "", department_id: "", level: "100", semester: "First Semester", academic_year: "", credit_hours: 3 })
   const [editCourseOpen, setEditCourseOpen] = useState(false)
   const [editCourseForm, setEditCourseForm] = useState({ title: "", programme_name: "", department: "", level: "100", semester: "First Semester", academic_year: "", credit_hours: 3, description: "", registration_open: true, enrolment_requires_approval: true, is_published: true })
   const [scheduleForm, setScheduleForm] = useState({ course_id: "", day_of_week: "0", start_time: "09:00", end_time: "11:00", building: "", room_no: "", class_type: "theory" })
@@ -470,7 +471,7 @@ function LecturerWorkspace({ fb }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => { loadCourses() }, [loadCourses])
+  useEffect(() => { loadCourses(); getAcademicDirectory().then(setDirectory).catch(e => fb.setError(e.message || "Academic programmes could not be loaded.")) }, [loadCourses])
   useRealtime((event) => {
     if (["enrolments", "courses", "timetable", "attendance", "materials"].includes(event.type)) {
       loadCourses()
@@ -510,15 +511,20 @@ function LecturerWorkspace({ fb }) {
 
   const createLecturerCourse = async (e) => {
     e.preventDefault()
-    const payload = { ...courseForm, credit_hours: Number(courseForm.credit_hours), registration_open: true,
+    const selectedProgramme = directory.programmes.find(p => String(p.id) === String(courseForm.programme_id))
+    const selectedDepartment = directory.departments.find(d => d.id === selectedProgramme?.department_id)
+    if (!selectedProgramme) { fb.setError("Select a programme from the academic directory."); return }
+    const payload = { ...courseForm, programme_id: Number(selectedProgramme.id), department_id: selectedDepartment?.id || null,
+      programme_name: selectedProgramme.name, department: selectedDepartment?.name || "",
+      credit_hours: Number(courseForm.credit_hours), registration_open: true,
       enrolment_requires_approval: true, is_published: true, batch_names: [] }
     const created = await fb.run(() => createCourse(payload), "Course created. Open its card to manage students and attendance.")
-    if (created) { setCourseForm({ title: "", code: "", programme_name: "", department: "", level: "100", semester: "First Semester", academic_year: "", credit_hours: 3 }); setShowCreate(false); loadCourses() }
+    if (created) { setCourseForm({ title: "", code: "", programme_id: "", programme_name: "", department: "", department_id: "", level: "100", semester: "First Semester", academic_year: "", credit_hours: 3 }); setShowCreate(false); loadCourses() }
   }
 
   const startEditCourse = (course) => {
     setEditCourseForm({
-      title: course.title || "", programme_name: course.programme_name || "", department: course.department || "",
+      title: course.title || "", programme_id: String(course.programme_id || ""), programme_name: course.programme_name || "", department: course.department || "",
       level: String(course.level || "100"), semester: course.semester || "First Semester",
       academic_year: course.academic_year || "", credit_hours: course.credit_hours ?? 3,
       description: course.description || "", registration_open: !!course.registration_open,
@@ -529,7 +535,12 @@ function LecturerWorkspace({ fb }) {
 
   const saveCourseEdits = async (e) => {
     e.preventDefault()
-    const payload = { ...editCourseForm, credit_hours: Number(editCourseForm.credit_hours), level: String(editCourseForm.level) }
+    const selectedProgramme = directory.programmes.find(p => String(p.id) === String(editCourseForm.programme_id))
+    const selectedDepartment = directory.departments.find(d => d.id === selectedProgramme?.department_id)
+    if (!selectedProgramme) { fb.setError("Select a programme from the academic directory."); return }
+    const payload = { ...editCourseForm, programme_id: Number(selectedProgramme.id), department_id: selectedDepartment?.id || null,
+      programme_name: selectedProgramme.name, department: selectedDepartment?.name || "",
+      credit_hours: Number(editCourseForm.credit_hours), level: String(editCourseForm.level) }
     const updated = await fb.run(() => updateCourse(selectedId, payload), "Course details updated.")
     if (updated !== null) { setEditCourseOpen(false); await loadCourses(); loadCourseDetail(selectedId) }
   }
@@ -698,8 +709,8 @@ function LecturerWorkspace({ fb }) {
         <section className="academic-panel"><div className="panel-title"><div><h2>Course overview</h2><p>Only information belonging to {selectedCourse.code} is shown here.</p></div><button className="primary-btn" onClick={() => startEditCourse(selectedCourse)}><Pencil size={15}/> Edit course details</button></div>
           {editCourseOpen && <form className="course-form mb-5" onSubmit={saveCourseEdits}>
             <input placeholder="Course title" value={editCourseForm.title} onChange={e=>setEditCourseForm(v=>({...v,title:e.target.value}))} required/>
-            <input placeholder="Eligible programme" value={editCourseForm.programme_name} onChange={e=>setEditCourseForm(v=>({...v,programme_name:e.target.value}))} required/>
-            <input placeholder="Department (optional)" value={editCourseForm.department} onChange={e=>setEditCourseForm(v=>({...v,department:e.target.value}))}/>
+            <select value={editCourseForm.programme_id} onChange={e=>setEditCourseForm(v=>({...v,programme_id:e.target.value}))} required><option value="">Select eligible programme</option>{directory.programmes.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
+            
             <select value={editCourseForm.level} onChange={e=>setEditCourseForm(v=>({...v,level:e.target.value}))}>{[100,200,300,400,500,600,700].map(l=><option key={l} value={l}>Level {l}</option>)}</select>
             <select value={editCourseForm.semester} onChange={e=>setEditCourseForm(v=>({...v,semester:e.target.value}))}><option>First Semester</option><option>Second Semester</option></select>
             <input placeholder="Academic year" value={editCourseForm.academic_year} onChange={e=>setEditCourseForm(v=>({...v,academic_year:e.target.value}))} required/>
@@ -763,7 +774,7 @@ function LecturerWorkspace({ fb }) {
 
   return <>
     <div className="panel-title lecturer-course-list-head"><div><h2>My Courses</h2><p>Open a course to manage its students, enrolment requests, attendance and reports.</p></div><button className="primary-btn" onClick={() => setShowCreate(v => !v)}><Plus size={16}/> Create course</button></div>
-    {showCreate && <section className="academic-panel"><div className="panel-title"><div><h2>Create a course</h2><p>Set up a course under your lecturer account.</p></div><button className="refresh-btn" onClick={()=>setShowCreate(false)}>Close</button></div><form className="course-form" onSubmit={createLecturerCourse}><input placeholder="Course title" value={courseForm.title} onChange={e=>setCourseForm(v=>({...v,title:e.target.value}))} required/><input placeholder="Course code (e.g. CSC 301)" value={courseForm.code} onChange={e=>setCourseForm(v=>({...v,code:e.target.value}))} required/><input placeholder="Eligible programme" value={courseForm.programme_name} onChange={e=>setCourseForm(v=>({...v,programme_name:e.target.value}))} required/><input placeholder="Department (optional)" value={courseForm.department} onChange={e=>setCourseForm(v=>({...v,department:e.target.value}))}/><select value={courseForm.level} onChange={e=>setCourseForm(v=>({...v,level:e.target.value}))}>{[100,200,300,400,500,600,700].map(l=><option key={l} value={l}>Level {l}</option>)}</select><select value={courseForm.semester} onChange={e=>setCourseForm(v=>({...v,semester:e.target.value}))}><option>First Semester</option><option>Second Semester</option></select><input placeholder="Academic year (e.g. 2026/2027)" value={courseForm.academic_year} onChange={e=>setCourseForm(v=>({...v,academic_year:e.target.value}))} required/><input type="number" min="0" max="30" value={courseForm.credit_hours} onChange={e=>setCourseForm(v=>({...v,credit_hours:e.target.value}))} placeholder="Credit hours"/><button className="primary-btn"><Plus size={15}/> Create course</button></form></section>}
+    {showCreate && <section className="academic-panel"><div className="panel-title"><div><h2>Create a course</h2><p>Set up a course under your lecturer account.</p></div><button className="refresh-btn" onClick={()=>setShowCreate(false)}>Close</button></div><form className="course-form" onSubmit={createLecturerCourse}><input placeholder="Course title" value={courseForm.title} onChange={e=>setCourseForm(v=>({...v,title:e.target.value}))} required/><input placeholder="Course code (e.g. CSC 301)" value={courseForm.code} onChange={e=>setCourseForm(v=>({...v,code:e.target.value}))} required/><select value={courseForm.programme_id} onChange={e=>setCourseForm(v=>({...v,programme_id:e.target.value}))} required><option value="">Select eligible programme</option>{directory.programmes.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select><select value={courseForm.level} onChange={e=>setCourseForm(v=>({...v,level:e.target.value}))}>{[100,200,300,400,500,600,700].map(l=><option key={l} value={l}>Level {l}</option>)}</select><select value={courseForm.semester} onChange={e=>setCourseForm(v=>({...v,semester:e.target.value}))}><option>First Semester</option><option>Second Semester</option></select><input placeholder="Academic year (e.g. 2026/2027)" value={courseForm.academic_year} onChange={e=>setCourseForm(v=>({...v,academic_year:e.target.value}))} required/><input type="number" min="0" max="30" value={courseForm.credit_hours} onChange={e=>setCourseForm(v=>({...v,credit_hours:e.target.value}))} placeholder="Credit hours"/><button className="primary-btn"><Plus size={15}/> Create course</button></form></section>}
     <div className="toolbar"><label className="search-box"><Search size={17}/><input placeholder="Search your courses" value={query} onChange={e=>setQuery(e.target.value)}/></label><select value={courseFilter} onChange={e=>setCourseFilter(e.target.value)}><option value="all">All courses</option><option value="live">Live today</option><option value="upcoming">Upcoming today</option><option value="completed">Completed today</option></select><button className="refresh-btn" onClick={loadCourses} disabled={loading}><RefreshCw size={15}/> Refresh</button></div>
     {loading ? <div className="academic-panel">Loading your courses…</div> : <div className="course-grid">{filteredCourses.map(c=>{const state=classState(c);return <button type="button" className="course-card lecturer-course-card" key={c.id} onClick={()=>openCourse(c)}><div className="course-top"><span className="course-mark">{c.code?.slice(0,2)}</span><span className={`course-state ${state}`}>{state === "all" ? "No class today" : state === "live" ? "Live" : state === "upcoming" ? "Upcoming" : "Completed"}</span></div><h3>{c.title}</h3><p className="course-code">{c.code} · Level {c.level || "—"}</p><div className="course-meta"><span><Users size={15}/> {c.enrolled_count || 0} students · {c.pending_count || 0} pending</span></div><div className="course-schedule-summary">{c.schedules?.length ? c.schedules.map(slot=><small key={slot.id}>{slot.day_name || DAYS[slot.day_of_week]} · {slot.start_time}–{slot.end_time} · {slot.venue_name || slot.room_no}</small>) : <small>No class schedule added yet.</small>}</div><span className="course-open-link">Open course <ArrowRight size={15}/></span></button>})}{!filteredCourses.length && <div className="empty-state">{courses.length ? "No courses match this filter." : "You have not created any courses yet. Create your first course to get started."}</div>}</div>}
   </>
