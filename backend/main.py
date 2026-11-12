@@ -227,7 +227,8 @@ def pending_students(cu: User = Depends(get_current_user), db: Session = Depends
                     "index_number": s.index_number, "phone": s.phone,
                     "institution_name": s.institution_name, "faculty_name": s.faculty_name,
                     "academic_year": s.academic_year,
-                    "ghana_card_last4": s.ghana_card_last4, "identity_document_type": s.identity_document_type,\n                    "identity_document_last4": s.identity_document_last4, "identity_status": s.identity_status,
+                    "ghana_card_last4": s.ghana_card_last4, "identity_document_type": s.identity_document_type,
+                    "identity_document_last4": s.identity_document_last4, "identity_status": s.identity_status,
                     "programme_id": s.programme_id,
                     "programme_name": programme.name if programme else s.programme_name,
                     "level": s.level, "department": s.department})
