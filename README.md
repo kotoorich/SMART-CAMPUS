@@ -373,7 +373,7 @@ postgresql://postgres.glnarqrqwohdrejfqnij:YOUR_URL_ENCODED_DATABASE_PASSWORD@aw
 9. Replace `YOUR_URL_ENCODED_DATABASE_PASSWORD` with the actual database password, URL-encoding reserved characters. For example, an `@` character in a password must be represented as `%40` inside the URI.
 10. Paste the completed URI privately into Render's `DATABASE_URL` environment variable. Never put the completed URI in this README, GitHub, the frontend or a `VITE_...` variable.
 
-**Security:** if the password you shared in this conversation is your real Supabase database password, rotate/change it in Supabase before using it. Treat a password shared in chat, screenshots or source control as exposed.
+**Security:** if the password previously shared in this conversation is your real Supabase database password, rotate/change it in Supabase before using it. Treat a password shared in chat, screenshots or source control as exposed.
 
 The backend uses SQLAlchemy, creates the application's tables and runs its additive migration routine during startup. For the normal first deployment, do not manually paste table-creation SQL into Supabase.
 
@@ -419,7 +419,8 @@ In the service dashboard, open **Environment → Add Environment Variable** and 
 | `ENVIRONMENT` | `production` |
 | `APP_TIMEZONE` | `Africa/Accra` |
 | `INSTITUTION_NAME` | `Smart Campus` |
-| `SEED_DEMO_DATA` | `false` |
+| `SEED_DEMO_DATA` | `false` for a real institution; set `true` only for a dedicated demo deployment |
+| `ALLOW_DEMO_SEED_IN_PRODUCTION` | `false` for a real institution; set `true` only alongside `SEED_DEMO_DATA=true` and a separate demo-only database |
 | `DATABASE_URL` | Your completed Supabase Session Pooler URI from section B2 |
 | `JWT_SECRET_KEY` | A newly generated long, random private signing secret |
 | `CORS_ORIGINS` | Your exact Vercel origin, e.g. `https://your-project.vercel.app` |
@@ -433,7 +434,8 @@ In the service dashboard, open **Environment → Add Environment Variable** and 
 **Important:**
 - `DATABASE_URL` must be the full PostgreSQL URI from Supabase, not a SQLite path.
 - Do not add quotation marks around values in the Render dashboard.
-- Keep `SEED_DEMO_DATA=false`; production must not be populated with local demo accounts.
+- For a real institution, keep both `SEED_DEMO_DATA=false` and `ALLOW_DEMO_SEED_IN_PRODUCTION=false`.
+- For a public demo service only, use a separate Supabase project/database with no real student or institutional records, then set both `SEED_DEMO_DATA=true` and `ALLOW_DEMO_SEED_IN_PRODUCTION=true`. The demo seeder synchronizes demo account passwords on each startup; use demo-only credentials and never reuse real passwords.
 - The backend reads the three `BOOTSTRAP_ADMIN_...` variables and creates the administrator only if that email does not already exist.
 - Generate a unique JWT secret. Do not reuse your database password or administrator password.
 - Save environment changes and allow Render to restart/redeploy the service.
@@ -520,7 +522,8 @@ Create them from the committed example templates. Never commit the real files.
 | Variable | Meaning |
 |---|---|
 | `ENVIRONMENT` | Use `development` locally and `production` on Render |
-| `SEED_DEMO_DATA` | Enables local demo data; must be `false` in production |
+| `SEED_DEMO_DATA` | Enables demo users and sample academic records; default `false` in production | 
+| `ALLOW_DEMO_SEED_IN_PRODUCTION` | Second explicit opt-in required to seed demo data in production; use only with a separate demo database |
 | `DATABASE_URL` | Optional locally; if omitted, SQLite is used. Required on Render for Supabase PostgreSQL |
 | `JWT_SECRET_KEY` | Secret used to sign login tokens. A local key is generated if not configured; must be configured in production |
 | `CORS_ORIGINS` | Comma-separated list of allowed frontend origins |
