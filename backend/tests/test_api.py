@@ -406,7 +406,7 @@ def test_timetable_update_and_delete(admin, faculty):
 
 
 # ── Attendance: QR + selfie + GPS ───────────────────────────────────────────
-def _make_today_course(admin, code, period):
+def _make_today_course(admin, faculty, code, period):
     lecturer_id = _lecturer_id(admin)
     weekday = date.today().weekday()
     res = client.post("/academic/courses", headers=faculty, json={
@@ -452,7 +452,7 @@ def test_attendance_can_open_without_timetable_and_outside_class_time(admin, fac
     assert data["period"].startswith("ADHOC-")
 
 def test_attendance_workflow(admin, faculty, student):
-    course = _make_today_course(admin, "ATT101", "P1")
+    course = _make_today_course(admin, faculty, "ATT101", "P1")
     batch = course["batches"][0]
     assert client.post("/academic/enrol", headers=student,
                        json={"course_id": course["id"], "batch_id": batch["id"],
@@ -757,7 +757,7 @@ def test_attendance_rate_consistent_across_student_surfaces(admin, faculty, stud
     Both are the share of classes *held* that the student attended, so the
     "present / total" figures and the percentage have to match exactly.
     """
-    course = _make_today_course(admin, "CONS101", "P4")
+    course = _make_today_course(admin, faculty, "CONS101", "P4")
     batch = course["batches"][0]
     assert client.post("/academic/enrol", headers=student,
                        json={"course_id": course["id"], "batch_id": batch["id"],
@@ -809,7 +809,7 @@ def test_session_opens_with_coarse_laptop_gps_fix(admin, faculty):
 def test_session_geofence_uses_distance_not_accuracy(admin, faculty, student):
     """A student with a coarse fix who is physically inside the radius is
     accepted; distance, not accuracy, decides proximity."""
-    course = _make_today_course(admin, "GEOF501", "P6")
+    course = _make_today_course(admin, faculty, "GEOF501", "P6")
     batch = course["batches"][0]
     assert client.post("/academic/enrol", headers=student,
                        json={"course_id": course["id"], "batch_id": batch["id"],
