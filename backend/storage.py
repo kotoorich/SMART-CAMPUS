@@ -10,6 +10,7 @@ Files are validated for type (JPEG/PNG/WebP) and size before being written.
 """
 from __future__ import annotations
 
+import os
 import re
 import secrets
 from pathlib import Path
@@ -21,7 +22,7 @@ from fastapi import HTTPException
 # Render's persistent disks are mounted at /var/data. Attach a disk at
 # that mount path to retain private selfies across deploys and restarts.
 # Local development continues to store files inside backend/private_uploads.
-if __import__("os").environ.get("RENDER", "").lower() == "true":
+if os.environ.get("RENDER", "").lower() == "true":
     STORE_DIR = Path("/var/data/smart-campus/attendance")
 else:
     STORE_DIR = Path(__file__).resolve().parent / "private_uploads" / "attendance"
