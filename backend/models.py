@@ -316,7 +316,7 @@ class Course(Base):
     __tablename__ = "courses"
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
-    code = Column(String, nullable=False, unique=True, index=True)
+    code = Column(String, nullable=False, index=True)
     description = Column(String, nullable=True)
     department = Column(String, nullable=True)
     institution_name = Column(String, nullable=True, index=True)
