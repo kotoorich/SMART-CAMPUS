@@ -503,9 +503,22 @@ def update_course(course_id: int, body: CourseUpdate, user: User = Depends(get_c
             raise HTTPException(404, "Lecturer not found")
     if user.role == "faculty":
         allowed = {"registration_open", "enrolment_requires_approval", "is_published", "description",
-                   "title", "level", "semester", "academic_year", "credit_hours", "programme_name"}
+                   "title", "level", "semester", "academic_year", "credit_hours", "programme_id"}
         updates = {k: v for k, v in updates.items() if k in allowed}
         programme_ids = None
+        if "programme_id" in updates:
+            selected = db.query(Programme).filter(Programme.id == updates["programme_id"]).first()
+            if not selected:
+                raise HTTPException(404, "Programme not found")
+            if user.department_id and selected.department_id != user.department_id:
+                raise HTTPException(403, "You can only assign courses to programmes in your department")
+            c.programme_id = selected.id
+            c.programme_name = selected.name
+            c.department_id = selected.department_id
+            department = db.query(Department).filter(Department.id == selected.department_id).first() if selected.department_id else None
+            c.department = department.name if department else None
+            _set_course_programmes(db, c, [selected.id])
+            updates.pop("programme_id", None)
     for k, v in updates.items():
         setattr(c, k, v)
     if programme_ids is not None and user.role == "admin":
