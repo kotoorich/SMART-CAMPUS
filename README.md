@@ -1,181 +1,542 @@
-# Smart Campus — UCC-ready attendance and academic workspace
+# Smart Campus — UCC-ready academic and attendance platform
 
-Smart Campus is a React/Vite frontend, FastAPI backend and PostgreSQL database application. The intended production arrangement is **GitHub → Vercel (frontend) → Render (API) → Supabase PostgreSQL (database)**.
+Smart Campus is a web application built with **React + Vite** (frontend), **FastAPI + SQLAlchemy** (backend), and **SQLite or PostgreSQL** (database).
 
-> **Important production note:** the backend currently stores private attendance selfies on its local filesystem (`backend/private_uploads/attendance`). Render's ordinary ephemeral filesystem can be cleared during restarts/redeploys. For production selfie retention, attach a Render persistent disk mounted at `backend/private_uploads`, or migrate the private image store to a private Supabase Storage bucket before launch. Do not assume the free ephemeral filesystem is durable.
+The application supports student, lecturer and administrator workflows. Lecturers manage their courses/classes and attendance sessions; students register for courses and record attendance; administrators oversee academic and attendance activity.
 
-## 1. Project structure
+This README contains two independent setup guides:
 
-- `frontend/` — React 19, Vite and React Router application.
-- `backend/` — FastAPI API, SQLAlchemy models, authentication, attendance and academic workflows.
-- `backend/routers/` — role-specific API routes.
-- `backend/tests/` — API integration tests.
-- `render.yaml` — Render Blueprint for the backend.
-- `frontend/vercel.json` — SPA route rewrite for Vercel.
-- `backend/.env.example` and `frontend/.env.example` — configuration templates. Never commit real `.env` files or secrets.
+- **Part A — Run Smart Campus on your own computer (localhost).** Use this when developing, testing or demonstrating the application locally.
+- **Part B — Deploy Smart Campus online.** Use this when publishing the frontend on Vercel, the API on Render and the production database on Supabase.
 
-## 2. Requirements for local development
+You do **not** need to deploy to Vercel or Render to run the application locally. You do **not** need Supabase for the default local setup.
 
-Install:
-- Python 3.11 or 3.12
-- Node.js 20 or newer and npm
-- Git
-- A modern browser
+---
 
-Camera and location APIs require HTTPS in production. Browsers permit them on `localhost` for local development.
+## Contents
 
-### Start the backend (Windows PowerShell)
+1. [Technology and project structure](#1-technology-and-project-structure)
+2. [Part A — Local installation and running](#part-a--local-installation-and-running)
+   - [Requirements](#a1-requirements)
+   - [Download the project](#a2-download-the-project)
+   - [Configure the local backend](#a3-configure-the-local-backend)
+   - [Install backend packages](#a4-install-backend-packages)
+   - [Start the backend](#a5-start-the-backend)
+   - [Configure and start the frontend](#a6-configure-and-start-the-frontend)
+   - [Local demo accounts](#a7-local-demo-accounts)
+   - [Stop and restart](#a8-stop-and-restart-the-application)
+3. [Part B — Online production deployment](#part-b--online-production-deployment)
+   - [Prepare GitHub](#b1-prepare-github)
+   - [Create the Supabase database](#b2-create-the-supabase-database)
+   - [Deploy the API to Render](#b3-deploy-the-api-to-render)
+   - [Deploy the frontend to Vercel](#b4-deploy-the-frontend-to-vercel)
+   - [Create the first production administrator](#b5-create-the-first-production-administrator)
+   - [Production storage and privacy](#b6-production-storage-and-privacy)
+4. [Environment variables explained](#4-environment-variables-explained)
+5. [Testing before release](#5-testing-before-release)
+6. [Troubleshooting](#6-troubleshooting)
+7. [Important implementation and security notes](#7-important-implementation-and-security-notes)
+
+---
+
+## 1. Technology and project structure
+
+| Area | Technology | Purpose |
+|---|---|---|
+| Frontend | React 19, Vite 7, React Router | Web interface |
+| Backend | Python 3.12, FastAPI, Uvicorn | API and application logic |
+| ORM | SQLAlchemy | Database access |
+| Local database | SQLite | Simple local development database |
+| Production database | PostgreSQL (Supabase) | Hosted production data |
+| Frontend hosting | Vercel | Public web application |
+| Backend hosting | Render | Public API |
+| Realtime updates | Server-Sent Events | Live application updates |
+
+Main folders and files:
+
+```text
+SMART-CAMPUS/
+├── backend/
+│   ├── main.py                 # FastAPI application entry point
+│   ├── database.py             # SQLite/PostgreSQL connection
+│   ├── models.py               # SQLAlchemy database models
+│   ├── migrations.py           # Additive schema updates
+│   ├── seed.py                 # Local demo data and account setup
+│   ├── routers/                # API route modules
+│   ├── tests/                  # Backend tests
+│   ├── requirements.txt        # Python dependencies
+│   └── .env.example            # Backend configuration template
+├── frontend/
+│   ├── src/                    # React source code
+│   ├── package.json            # Frontend scripts and dependencies
+│   ├── package-lock.json       # Locked npm dependency versions
+│   ├── vercel.json             # Vercel SPA route rewrite
+│   └── .env.example            # Frontend configuration template
+├── render.yaml                 # Render service configuration
+└── README.md
+```
+
+---
+
+# Part A — Local installation and running
+
+This part runs the frontend and backend on your computer. Keep the backend and frontend running in **two separate terminal windows**.
+
+## A1. Requirements
+
+Install the following before continuing:
+
+1. **Python 3.12** — check with `py --version` on Windows or `python3 --version` on macOS/Linux.
+2. **Node.js 20.19+ or 22.12+** — check with `node --version`.
+3. **npm** — installed with Node.js; check with `npm --version`.
+4. **Git** — check with `git --version`.
+5. **Visual Studio Code** (recommended) or another code editor.
+6. A modern browser such as Chrome or Edge.
+
+You do not need to install PostgreSQL or create a Supabase project for the default local setup. The backend uses a local SQLite file automatically.
+
+## A2. Download the project
+
+### Option 1 — Clone with Git (recommended)
+
+Open PowerShell or a terminal and run:
 
 ```powershell
-cd Smart-Campusackend
+git clone https://github.com/kotoorich/SMART-CAMPUS.git
+cd SMART-CAMPUS
+```
+
+### Option 2 — Download ZIP
+
+1. Open the [Smart Campus GitHub repository](https://github.com/kotoorich/SMART-CAMPUS).
+2. Select **Code → Download ZIP**.
+3. Extract the ZIP to a folder you can find easily, for example `C:\Projects\SMART-CAMPUS`.
+4. Open that extracted folder in Visual Studio Code.
+5. In VS Code, select **Terminal → New Terminal**.
+
+Before running commands, make sure your terminal is at the project root. The root folder should contain both `backend` and `frontend`.
+
+## A3. Configure the local backend
+
+The backend has a local SQLite default. If you do not set `DATABASE_URL`, the database file is created at:
+
+`backend/smart_campus.db`
+
+Create your local environment file by copying the template.
+
+**Windows PowerShell (from the project root):**
+
+```powershell
+Copy-Item backend/.env.example backend/.env
+```
+
+**macOS/Linux (from the project root):**
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Open `backend/.env` in your editor. For local development, keep these settings:
+
+```dotenv
+ENVIRONMENT=development
+SEED_DEMO_DATA=true
+APP_TIMEZONE=Africa/Accra
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+```
+
+The example file already contains local demo account names and passwords. You can change them before the first start. The demo seed process updates these demo accounts on backend startup while demo seeding is enabled.
+
+**Important:** `backend/.env` is a private local file. Do not upload it to GitHub. The repository ignores real `.env` files; commit only the safe `.env.example` template.
+
+## A4. Install backend packages
+
+Open **Terminal 1** (PowerShell on Windows):
+
+```powershell
+cd backend
 py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r requirements.txt
-Copy-Item .env.example .env
+```
+
+If PowerShell says script execution is disabled, run this in the same terminal:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.venv\Scripts\Activate.ps1
+```
+
+If the `py -3.12` command is not available, use the Python 3.12 installation command available on your computer, for example:
+
+```powershell
+python -m venv .venv
+```
+
+**macOS/Linux:**
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Wait until pip finishes installing the packages. Keep this terminal open.
+
+## A5. Start the backend
+
+Make sure you are inside the `backend` folder and that the virtual environment is active.
+
+Run:
+
+```powershell
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-If PowerShell blocks activation, run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` in that terminal, then activate again.
+You should see Uvicorn report that the application has started.
 
-### Start the frontend (a second terminal)
+Open these addresses in your browser:
+
+- API root: http://127.0.0.1:8000/
+- Health check: http://127.0.0.1:8000/health
+- Interactive API documentation: http://127.0.0.1:8000/docs
+
+The health check should report a healthy database connection. Keep Terminal 1 running while you use the frontend.
+
+### What happens on the first backend start?
+
+The application creates the database tables and runs its additive schema migration routine. With `SEED_DEMO_DATA=true` in development, it also inserts the local demo academic structure and demo accounts. You do not need to run SQL manually for the normal local setup.
+
+## A6. Configure and start the frontend
+
+Open **Terminal 2**. Do not stop Terminal 1.
+
+From the project root, copy the frontend environment template:
+
+**Windows PowerShell:**
 
 ```powershell
-cd Smart-Campusrontend
-npm ci
-Copy-Item .env.example .env
-npm run dev -- --host 127.0.0.1 --port 5173
+Copy-Item frontend/.env.example frontend/.env
 ```
 
-Open `http://127.0.0.1:5173`. API documentation is at `http://127.0.0.1:8000/docs`.
-
-For macOS/Linux, replace `py -3.12` with `python3`, use `source .venv/bin/activate`, and copy files with `cp .env.example .env`.
-
-## 3. Supabase database setup
-
-1. Create a Supabase project.
-2. Open **Project Settings → Database → Connection string**.
-3. Choose the connection string intended for a persistent server connection. For Render, use the Supabase pooler connection if direct IPv6 connectivity is unavailable; use the transaction/session pooler mode recommended by Supabase for your connection pattern.
-4. Copy the URI and replace the password placeholder with the database password. URL-encode special characters in the password.
-5. Keep the URI private. It belongs only in Render's backend environment variables, never in Vercel or frontend code.
-6. The backend normalizes `postgres://` URLs and uses SSL for remote PostgreSQL connections. Tables are created/migrated by the backend startup logic; do not paste SQL manually unless a future migration explicitly instructs you to.
-
-Use a dedicated database password. If it has characters such as `@`, `:`, `/`, `#` or `%`, URL-encode them before inserting them into the connection URI.
-
-## 4. Push the project to GitHub
-
-Create an empty GitHub repository, then from the project root:
+**macOS/Linux:**
 
 ```bash
-git init
-git add .
-git status
-git commit -m "Prepare Smart Campus for deployment"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-git push -u origin main
+cp frontend/.env.example frontend/.env
 ```
 
-Replace the repository URL with your actual GitHub repository. Check `git status` before committing and confirm that `.env`, `.venv`, `node_modules`, local databases and private uploads are not staged.
+Open `frontend/.env` and confirm that it contains:
 
-## 5. Deploy the backend to Render
+```dotenv
+VITE_API_URL=http://localhost:8000
+```
 
-1. Sign in to Render and choose **New → Blueprint** (or create a Web Service manually).
-2. Connect the GitHub repository containing this project. Render detects the root `render.yaml`.
-3. The Blueprint uses `backend` as the root directory, installs `backend/requirements.txt`, starts Uvicorn on Render's `$PORT`, and checks `/health`.
-4. In the Render service's **Environment** tab, set the variables below.
-5. Deploy and wait for the service to become **Live**.
-6. Open `https://YOUR-API.onrender.com/health`. It should return a healthy response. Also open `/docs` to confirm the API is reachable.
+This tells the browser application to send API requests to your local FastAPI server.
 
-### Required Render environment variables
+Install frontend dependencies and start Vite:
 
-| Variable | Value |
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+If you are using macOS/Linux, the same commands apply.
+
+Vite will display a local address. Open:
+
+**http://localhost:5173**
+
+You should now have:
+
+| Component | Local address |
+|---|---|
+| Smart Campus frontend | http://localhost:5173 |
+| FastAPI backend | http://127.0.0.1:8000 |
+| API documentation | http://127.0.0.1:8000/docs |
+| Backend health | http://127.0.0.1:8000/health |
+
+Do not close either terminal while testing. The backend and frontend are separate processes; both must be running.
+
+## A7. Local demo accounts
+
+When local demo seeding is enabled, the default accounts in the example environment file are:
+
+| Role | Email | Password |
+|---|---|---|
+| Administrator | `admin@smartcampus.com` | `Admin@12345` |
+| Lecturer | `faculty1@smartcampus.com` | `Lecturer@12345` |
+| Student | `student@smartcampus.com` | `Student@12345` |
+
+The demo student index number is `2024001`.
+
+These are **development-only demonstration credentials**. They are not production credentials. Change them in `backend/.env` if you share your development environment, and never reuse them on a live deployment.
+
+If you change the demo account settings after the backend has started, restart the backend. The demo seeding routine synchronizes the configured demo accounts on startup while `SEED_DEMO_DATA=true`.
+
+## A8. Stop and restart the application
+
+To stop either server, click its terminal and press:
+
+`CTRL + C`
+
+To start again:
+
+1. Start the backend first from the `backend` folder with the virtual environment activated.
+2. Start the frontend from the `frontend` folder in a second terminal.
+3. Open http://localhost:5173.
+
+### Reset the local demo database
+
+If you want to remove all local development data and let the application recreate its demo database:
+
+1. Stop the backend.
+2. Back up anything you need.
+3. Delete `backend/smart_campus.db`.
+4. Start the backend again with `SEED_DEMO_DATA=true`.
+
+This permanently deletes the data stored in that local SQLite database. Do not do this to a production database.
+
+---
+
+# Part B — Online production deployment
+
+This part publishes the application on the internet. The production architecture is:
+
+```text
+Student / Lecturer / Administrator browser
+                  |
+                  v
+        Vercel — React frontend
+                  |
+          HTTPS API requests
+                  |
+                  v
+          Render — FastAPI API
+                  |
+          PostgreSQL connection
+                  |
+                  v
+       Supabase — Production database
+```
+
+Local and production configuration are different:
+
+| Setting | Local development | Online production |
+|---|---|---|
+| Frontend | Vite on localhost:5173 | Vercel domain |
+| Backend | Uvicorn on localhost:8000 | Render service URL |
+| Database | SQLite file | Supabase PostgreSQL |
+| Frontend API URL | `http://localhost:8000` | Render HTTPS URL |
+| Demo seeding | Enabled for local testing | Disabled |
+| Secrets | Private local `.env` | Render environment settings |
+| Browser camera/location | localhost is permitted | HTTPS is required |
+
+## B1. Prepare GitHub
+
+1. Sign in to GitHub.
+2. Open [the Smart Campus repository](https://github.com/kotoorich/SMART-CAMPUS).
+3. Confirm that the code you intend to deploy is committed to the `main` branch.
+4. Confirm that the root of the repository contains `backend/`, `frontend/` and `render.yaml`.
+5. Confirm that real secrets and local data are not committed.
+
+If you make changes locally, commit and push them:
+
+```bash
+git status
+git add .
+git status
+git commit -m "Describe the changes"
+git push origin main
+```
+
+Before pushing, check that you are not staging `backend/.env`, `frontend/.env`, `.venv`, `node_modules`, `backend/smart_campus.db`, private attendance images or other secrets.
+
+## B2. Create the Supabase database
+
+1. Visit [Supabase](https://supabase.com/) and sign in.
+2. Create a new project.
+3. Choose a project name and a strong database password. Save the password securely.
+4. Select a region suitable for your users and hosting services.
+5. Wait for the database project to finish provisioning.
+6. Open **Project Settings → Database → Connection string**.
+7. Select the connection URI option. Use a connection method supported by your hosting environment; the Supabase pooler is useful when a direct connection is not reachable from the host.
+8. Copy the PostgreSQL connection URI.
+9. Replace any password placeholder with your actual database password. URL-encode special characters in the password before inserting it into the URI.
+10. Keep this URI private. You will enter it into Render as `DATABASE_URL`.
+
+The backend uses SQLAlchemy, creates the application's tables and runs its additive migration routine during startup. For the normal first deployment, do not manually paste table-creation SQL into Supabase.
+
+**Do not put the database URI in the frontend, in a public repository, or in a `VITE_...` variable.**
+
+## B3. Deploy the API to Render
+
+The repository includes a root-level `render.yaml` Blueprint configuration.
+
+1. Visit [Render](https://render.com/) and sign in.
+2. Select **New → Blueprint**.
+3. Connect your GitHub account if asked.
+4. Select the `kotoorich/SMART-CAMPUS` repository.
+5. Select the `main` branch.
+6. Render reads `render.yaml` and prepares the `smart-campus-api` web service.
+7. Review the service settings. The Blueprint sets the backend root directory to `backend`, installs `requirements.txt`, starts Uvicorn on Render's assigned port and uses `/health` as its health-check path.
+8. Fill in the values Render requests for variables marked as secrets or not synchronized from the file.
+9. Start the deployment.
+10. Open the service's **Logs** tab and wait for the build and startup to complete.
+11. When the service is live, copy its public URL, for example `https://smart-campus-api.onrender.com`.
+
+### Set these Render environment variables
+
+Open the Render service → **Environment** and verify the following:
+
+| Variable | Production value |
 |---|---|
 | `ENVIRONMENT` | `production` |
-| `DATABASE_URL` | Supabase PostgreSQL connection URI |
-| `JWT_SECRET_KEY` | Long, random, private secret (at least 32 random bytes) |
-| `CORS_ORIGINS` | Your exact Vercel origin, e.g. `https://your-app.vercel.app` (comma-separate additional trusted origins) |
+| `DATABASE_URL` | Your Supabase PostgreSQL connection URI |
+| `JWT_SECRET_KEY` | A long, randomly generated private secret; Render Blueprint can generate this |
+| `CORS_ORIGINS` | Your exact Vercel origin, e.g. `https://your-project.vercel.app` |
 | `SEED_DEMO_DATA` | `false` |
 | `APP_TIMEZONE` | `Africa/Accra` |
-| `BOOTSTRAP_ADMIN_NAME` | Name of the initial administrator |
-| `BOOTSTRAP_ADMIN_EMAIL` | Real administrator email |
-| `BOOTSTRAP_ADMIN_PASSWORD` | Strong, unique initial password |
-| `ATTENDANCE_GPS_RADIUS_METERS` | `50` (or institutional policy) |
-| `ATTENDANCE_GPS_ACCURACY_CEILING` | `500` (maximum tolerated reported GPS accuracy in metres) |
+| `BOOTSTRAP_ADMIN_NAME` | Name of your first administrator |
+| `BOOTSTRAP_ADMIN_EMAIL` | Email address for your first administrator |
+| `BOOTSTRAP_ADMIN_PASSWORD` | Strong, unique password for your first administrator |
+| `ATTENDANCE_GPS_RADIUS_METERS` | `50` (or the institution's approved radius) |
+| `ATTENDANCE_GPS_ACCURACY_CEILING` | `500` (metres; adjust only after device testing) |
 | `ATTENDANCE_GPS_SESSION_ACCURACY_CEILING` | `500` |
 
-Optional payment configuration (only if lecturer registration payments are enabled):
+The Blueprint already defines several non-secret settings and generates a JWT secret. Confirm the final values in the Render dashboard. Add the bootstrap administrator values there if they are not already present.
 
-| Variable | Value |
+Do not set `SEED_DEMO_DATA=true` in production. The application deliberately prevents demo data seeding in a production environment.
+
+### Verify the backend before deploying the frontend
+
+Replace the sample hostname with your actual Render URL and open:
+
+- `https://YOUR-RENDER-SERVICE.onrender.com/`
+- `https://YOUR-RENDER-SERVICE.onrender.com/health`
+- `https://YOUR-RENDER-SERVICE.onrender.com/docs`
+
+The health endpoint should report a healthy database connection. If it reports a degraded database status, fix the database connection before continuing.
+
+## B4. Deploy the frontend to Vercel
+
+1. Visit [Vercel](https://vercel.com/) and sign in.
+2. Select **Add New → Project**.
+3. Import the `kotoorich/SMART-CAMPUS` GitHub repository.
+4. In project configuration, set **Root Directory** to `frontend`.
+5. Select **Vite** as the framework preset if Vercel does not detect it automatically.
+6. Set the build command to `npm run build`.
+7. Set the output directory to `dist`.
+8. Open **Environment Variables** and add:
+
+| Name | Value |
 |---|---|
-| `PAYSTACK_SECRET_KEY` | Paystack **secret** key; backend only |
-| `PAYSTACK_CALLBACK_URL` | `https://YOUR-VERCEL-DOMAIN/lecturer/payment/callback` |
+| `VITE_API_URL` | Your Render API URL, e.g. `https://smart-campus-api.onrender.com` |
 
-Do not put Paystack secret keys, Supabase service-role keys, database passwords or JWT secrets in Vercel. The frontend must never receive a backend secret.
+9. Make sure the variable is available to the Production environment (and Preview if you intend to test preview deployments).
+10. Deploy the project.
+11. Wait for the deployment to finish and open the Vercel domain.
 
-## 6. Deploy the frontend to Vercel
+The frontend reads `VITE_API_URL` at build time. If you change it, trigger a new Vercel deployment. Do not add a trailing slash to the API URL.
 
-1. In Vercel choose **Add New → Project** and import the GitHub repository.
-2. Set **Root Directory** to `frontend`.
-3. Framework preset: **Vite**.
-4. Build command: `npm run build`.
-5. Output directory: `dist`.
-6. Add this environment variable:
+The repository's `frontend/vercel.json` supplies the single-page application rewrite needed for direct navigation and page refreshes on nested frontend routes.
 
-| Variable | Value |
+## B5. Connect Vercel and Render, then create the first administrator
+
+The frontend and backend must allow each other to communicate.
+
+1. Copy the exact Vercel production origin, for example `https://smart-campus.vercel.app`.
+2. Open the Render service → **Environment**.
+3. Set `CORS_ORIGINS` to that exact origin. Do not include a path such as `/login`.
+4. If you have multiple trusted frontend origins, separate them with commas.
+5. Save the environment changes and redeploy/restart the Render service.
+6. In Render, confirm that `BOOTSTRAP_ADMIN_NAME`, `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` are configured.
+7. The backend creates the initial administrator account if that email does not already exist.
+8. Open the Vercel application and sign in using that administrator email and password.
+9. Change the initial password through the application's supported account/security workflow, if available, and store it securely.
+
+If the bootstrap email already exists in the database, changing the environment variable does not automatically reset that existing account's password. Use the application's password-management process or a controlled administrative recovery procedure.
+
+## B6. Production storage and privacy
+
+**Attendance image storage must be addressed before relying on production selfie retention.**
+
+The backend stores private attendance selfies under its local private-upload directory. A standard Render web service filesystem is ephemeral, so files can be lost when the service is redeployed or restarted.
+
+Before using the platform for real attendance records, choose and test a durable private storage approach:
+
+- Attach a Render persistent disk and mount it at the exact path used by the backend's private upload storage; or
+- Implement and test private Supabase Storage/object storage, including access controls and authorized image retrieval.
+
+Do not assume that a normal Render deployment permanently retains uploaded selfies. Confirm the actual configured storage path and test upload, retrieval, access permissions and retention after a redeployment.
+
+Student identity details, Ghana Card-derived data, registration selfies, attendance selfies and location information are sensitive personal data. Before institutional use, establish an appropriate privacy notice, lawful collection basis, access controls, retention/deletion schedule, backup process and incident response procedure.
+
+---
+
+## 4. Environment variables explained
+
+There are separate environment files and settings for local development and production.
+
+### Local files
+
+| File | Purpose |
 |---|---|
-| `VITE_API_URL` | `https://YOUR-RENDER-SERVICE.onrender.com` (no trailing slash) |
+| `backend/.env` | Local backend configuration and demo account credentials |
+| `frontend/.env` | Local frontend API address |
 
-7. Deploy. Copy the Vercel production domain.
-8. Return to Render and set `CORS_ORIGINS` to that exact origin, then redeploy the backend.
-9. If you change `VITE_API_URL`, trigger a new Vercel deployment because Vite embeds it at build time.
+Create them from the committed example templates. Never commit the real files.
 
-`frontend/vercel.json` contains the SPA rewrite so direct navigation/refresh on nested React routes returns the application entry point.
+### Backend variables
 
-## 7. First production login and security
+| Variable | Meaning |
+|---|---|
+| `ENVIRONMENT` | Use `development` locally and `production` on Render |
+| `SEED_DEMO_DATA` | Enables local demo data; must be `false` in production |
+| `DATABASE_URL` | Optional locally; if omitted, SQLite is used. Required on Render for Supabase PostgreSQL |
+| `JWT_SECRET_KEY` | Secret used to sign login tokens. A local key is generated if not configured; must be configured in production |
+| `CORS_ORIGINS` | Comma-separated list of allowed frontend origins |
+| `APP_TIMEZONE` | Application timezone; this project uses `Africa/Accra` |
+| `BOOTSTRAP_ADMIN_NAME` | Initial production administrator's name |
+| `BOOTSTRAP_ADMIN_EMAIL` | Initial production administrator's email |
+| `BOOTSTRAP_ADMIN_PASSWORD` | Initial production administrator's password |
+| `ATTENDANCE_GPS_RADIUS_METERS` | Geofence radius in metres |
+| `ATTENDANCE_GPS_ACCURACY_CEILING` | Maximum accepted reported GPS accuracy for student location |
+| `ATTENDANCE_GPS_SESSION_ACCURACY_CEILING` | Maximum accepted reported GPS accuracy when opening a session |
+| `DB_SSLMODE` | Optional PostgreSQL SSL mode override; remote connections default to `require` |
 
-- Create the initial administrator using the `BOOTSTRAP_ADMIN_*` values on Render.
-- Keep `SEED_DEMO_DATA=false` in production. The demo users shown for local testing are not production accounts.
-- Sign in with the bootstrap administrator account, then change the password if the application provides that workflow.
-- Never reuse the sample local demo passwords in production.
-- Keep the Supabase database, Render service and Vercel project private to the people who administer them.
-- Configure backups and test restoration before real student records are entered.
-- Provide an institutional privacy notice and retention/deletion policy for student identity details, selfies and location evidence.
+### Local demo account variables
 
-## 8. GPS and attendance troubleshooting
+The backend example file includes:
 
-- Open the site over HTTPS on the student's phone; browser geolocation is not available on an ordinary non-secure HTTP production origin.
-- Allow location permission for the site and enable Location Services on Android/iOS.
-- On Android, set the browser/site permission to allow location and enable precise location where the OS offers that option.
-- Turn off battery saver/location restrictions temporarily, move near a window or outdoors, and retry if the device reports a very coarse fix.
-- A lecturer must open the attendance session with a valid location before students scan its QR code.
-- The system records reported GPS accuracy and still checks the student's coordinate against the lecturer's session radius. A permissive accuracy ceiling does **not** enlarge the classroom radius.
-- If the device cannot return any coordinates, no web application can manufacture a reliable GPS fix. Try another browser/device or correct the device's location settings.
+- `DEMO_ADMIN_NAME`, `DEMO_ADMIN_EMAIL`, `DEMO_ADMIN_PASSWORD`
+- `DEMO_FACULTY_NAME`, `DEMO_FACULTY_EMAIL`, `DEMO_FACULTY_PASSWORD`
+- `DEMO_STUDENT_NAME`, `DEMO_STUDENT_EMAIL`, `DEMO_STUDENT_PASSWORD`
+- `DEMO_STUDENT_INDEX_NUMBER`
+- `DEMO_DEPARTMENT`
 
-The default student GPS accuracy ceiling is now 500 metres to avoid rejecting many usable Android/network-derived fixes at the previous 150-metre threshold. The actual geofence distance remains independently enforced. Institutions that require stricter location assurance should lower this value and test it across their campus devices and buildings.
+These variables are for local development only. Production uses the bootstrap administrator variables and must not seed demo accounts.
 
-## 9. Common deployment errors
+### Frontend variable
 
-**Frontend says Failed to fetch**
-- Confirm `VITE_API_URL` is the live Render URL, without a trailing slash.
-- Confirm Render `/health` responds.
-- Confirm Render `CORS_ORIGINS` exactly matches the Vercel origin, including `https://` and excluding a trailing slash.
-- Redeploy Vercel after changing its environment variable and redeploy Render after changing CORS.
+| Variable | Local value | Production value |
+|---|---|---|
+| `VITE_API_URL` | `http://localhost:8000` | Render API HTTPS URL |
 
-**Database connection fails**
-- Recheck the Supabase URI, password encoding and SSL requirement.
-- Use the appropriate Supabase pooler URI if Render cannot connect directly.
-- Confirm the Supabase project is not paused and database credentials have not been rotated.
+Anything prefixed with `VITE_` is embedded in the browser build and must be treated as public. Never put passwords, JWT secrets, database credentials or private API keys in frontend environment variables.
 
-**Camera or GPS permission fails**
-- Use HTTPS, grant browser permission, and check the device-level camera/location settings.
+---
 
-**Selfie cannot be retrieved after redeployment**
-- Check whether the backend is using an ephemeral filesystem. Attach a persistent Render disk at the configured private-upload directory or implement private object storage before relying on long-term photo retention.
+## 5. Testing before release
 
-## 10. Run checks before release
+Run these checks before pushing changes or releasing a new version.
 
-Backend:
+### Backend checks
+
+From the project root:
 
 ```bash
 cd backend
@@ -183,7 +544,11 @@ python -m compileall -q .
 pytest -q
 ```
 
-Frontend:
+If tests require optional test packages not included in `requirements.txt`, install the test dependencies documented by the project before interpreting a missing-package error as an application failure.
+
+### Frontend checks
+
+Open a terminal at the project root:
 
 ```bash
 cd frontend
@@ -192,8 +557,110 @@ npm run lint
 npm run build
 ```
 
-Do not call the application production-ready solely because it deploys. Test the full workflow on actual phones and accounts: student signup/login, lecturer course creation, student course registration, lecturer attendance session/QR generation, student QR scan + selfie + GPS, lecturer register review, administrator oversight, and refresh/deep-link navigation on mobile.
+A successful build does not prove that every workflow works. Test the application with separate student, lecturer and administrator accounts.
 
-## 11. Known implementation boundaries
+### Recommended end-to-end checklist
 
-The app's attendance verification uses QR/session credentials, a selfie upload and browser geolocation. It does not by itself provide certified face recognition/liveness detection, official Ghana Card/NIA verification, native offline attendance or SMS/email delivery. Do not describe those as available unless separately integrated and tested. The application must be tested with your institution's real policies and devices before live student use.
+- [ ] Backend starts and `/health` reports a healthy database.
+- [ ] Frontend loads and can communicate with the backend.
+- [ ] Administrator can sign in and access administrative oversight.
+- [ ] Lecturer can sign in and create/manage their academic courses/classes.
+- [ ] Lecturer can open and close an attendance session and display its QR code.
+- [ ] Student can sign up with the required information and sign in after approval.
+- [ ] Student can register for the correct course using the lecturer's registration process.
+- [ ] Student can scan the lecturer's attendance QR code.
+- [ ] Student can grant camera and location permission and submit the attendance selfie/location.
+- [ ] Lecturer can review attendance records and timestamps.
+- [ ] Administrator can review institution-wide activity and attendance records.
+- [ ] Refreshing a nested page does not produce a Vercel 404.
+- [ ] Mobile navigation and page navigation work on a real phone.
+- [ ] Private images remain retrievable after a backend redeployment (once durable storage is configured).
+
+---
+
+## 6. Troubleshooting
+
+### A. Frontend displays “Failed to fetch”
+
+1. Check that the backend is running.
+2. Open the backend `/health` URL directly.
+3. Confirm `VITE_API_URL` points to the correct API host.
+4. For local development, it should be `http://localhost:8000`.
+5. For production, it should be the Render HTTPS service URL.
+6. Confirm the Render `CORS_ORIGINS` value exactly matches the Vercel origin.
+7. Restart the backend after changing CORS.
+8. Redeploy the frontend after changing `VITE_API_URL`.
+
+### B. Backend cannot connect to Supabase
+
+1. Confirm the Supabase project is active.
+2. Re-copy the database connection URI.
+3. Check that the database password is correct and special characters are URL-encoded.
+4. Use a suitable Supabase pooler connection if the host cannot reach the direct database endpoint.
+5. Confirm Render's `DATABASE_URL` contains the production database URI, not a local SQLite path.
+6. Review Render logs for the exact connection error.
+
+### C. Login returns 401 or 403
+
+- Check the email and password.
+- Make sure the selected role matches the account role.
+- A student or lecturer account may require administrator approval before login.
+- Confirm that you are using local demo credentials only on a local database.
+- Confirm the production administrator was bootstrapped successfully.
+- If the token secret was changed, sign out and sign in again.
+
+### D. Camera or GPS permission is unavailable
+
+- Use HTTPS for the deployed website. Browsers normally allow camera and location APIs on localhost during development.
+- Allow camera and location permissions in the browser.
+- Enable Location Services on the phone and allow precise location if available.
+- Try outdoors or near a window if the phone reports poor GPS accuracy.
+- Check that the lecturer's attendance session has a valid location and is still open.
+- A GPS accuracy threshold is not the same as the geofence radius. Increasing the accuracy ceiling does not make a student farther away from the classroom eligible to attend.
+
+### E. Vercel refreshes a nested page to a 404
+
+- Confirm that `frontend/vercel.json` is committed.
+- Confirm that Vercel's Root Directory is `frontend`.
+- Redeploy after correcting the project settings.
+
+### F. Attendance selfies disappear after redeployment
+
+This usually indicates that the backend is using an ephemeral filesystem. Configure persistent disk or durable private object storage as described in [Production storage and privacy](#b6-production-storage-and-privacy).
+
+### G. PowerShell does not recognize `uvicorn`
+
+- Confirm that the backend virtual environment is activated.
+- Run `pip install -r requirements.txt` again if necessary.
+- You can also start it with `python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000`.
+
+### H. Port 8000 or 5173 is already in use
+
+Stop the other process using that port, or choose another port. If you change the backend port, also update `VITE_API_URL` in `frontend/.env` to match and restart Vite.
+
+---
+
+## 7. Important implementation and security notes
+
+1. **Never commit secrets.** Keep real `.env` files, database passwords, JWT secrets, private uploads and production credentials out of Git.
+2. **Do not seed demo data in production.** Keep `SEED_DEMO_DATA=false` and `ENVIRONMENT=production`.
+3. **Use HTTPS online.** Camera and location permissions require a secure browser context.
+4. **Protect personal data.** Restrict access to student identity information, selfies and location records. Define retention and deletion policies before institutional deployment.
+5. **Back up production data.** Configure database backups and test restoration.
+6. **Persist private uploads.** Render's ordinary ephemeral filesystem is not durable storage.
+7. **Test on real devices.** GPS accuracy varies between phones, buildings, network conditions and operating systems.
+8. **Validate institutional workflows.** Confirm academic structure, approval settings, course registration, attendance rules and user permissions with the institution before going live.
+9. **Do not overstate identity assurance.** The current attendance process uses a lecturer-issued QR/session, a selfie and browser geolocation. This alone does not constitute certified facial-recognition/liveness verification or official Ghana Card/NIA verification.
+10. **Keep local and production databases separate.** Deleting or resetting `backend/smart_campus.db` affects only the local SQLite database. Never use local reset instructions against the production Supabase database.
+
+---
+
+## Useful links
+
+- [GitHub repository](https://github.com/kotoorich/SMART-CAMPUS)
+- [Supabase](https://supabase.com/)
+- [Render](https://render.com/)
+- [Vercel](https://vercel.com/)
+- [FastAPI documentation](https://fastapi.tiangolo.com/)
+- [Vite documentation](https://vite.dev/)
+
