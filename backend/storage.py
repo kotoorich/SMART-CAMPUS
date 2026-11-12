@@ -18,7 +18,13 @@ from fastapi import HTTPException
 
 # Private directory beside the backend package — deliberately NOT under any
 # directory that a web server or the frontend dev server serves.
-STORE_DIR = Path(__file__).resolve().parent / "private_uploads" / "attendance"
+# Render's persistent disks are mounted at /var/data. Attach a disk at
+# that mount path to retain private selfies across deploys and restarts.
+# Local development continues to store files inside backend/private_uploads.
+if __import__("os").environ.get("RENDER", "").lower() == "true":
+    STORE_DIR = Path("/var/data/smart-campus/attendance")
+else:
+    STORE_DIR = Path(__file__).resolve().parent / "private_uploads" / "attendance"
 STORE_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_BYTES = 5 * 1024 * 1024  # 5 MB
