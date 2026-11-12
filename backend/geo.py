@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import os
 from math import radians, sin, cos, sqrt, atan2, isfinite
 from zoneinfo import ZoneInfo
 
@@ -12,8 +13,12 @@ from fastapi import HTTPException
 GPS_RADIUS_METERS = 50
 GPS_ACCURACY_CEILING = 500.0
 GPS_SESSION_ACCURACY_CEILING = 500.0
-APP_TIMEZONE = ZoneInfo("Africa/Accra")
-DEV_ALLOW_ANY_TIME = False
+APP_TIMEZONE = ZoneInfo(os.getenv("APP_TIMEZONE", "Africa/Accra"))
+DEV_ALLOW_ANY_TIME = (
+    os.getenv("DEV_ALLOW_ANY_TIME", "false").lower() == "true"
+    and os.getenv("RENDER", "").lower() != "true"
+    and os.getenv("ENVIRONMENT", "development").lower() != "production"
+)
 
 
 def app_now() -> datetime:
