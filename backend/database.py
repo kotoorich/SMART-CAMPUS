@@ -9,6 +9,17 @@ BASE_DIR = Path(__file__).resolve().parent
 _default_db = (BASE_DIR / "smart_campus.db").as_posix()
 DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{_default_db}").strip()
 
+# Never let a hosted service silently fall back to an ephemeral SQLite file.
+# Render supplies RENDER=true automatically; local development keeps SQLite.
+_IS_HOSTED = (
+    os.environ.get("RENDER", "").lower() == "true"
+    or os.environ.get("ENVIRONMENT", "development").lower() == "production"
+)
+if _IS_HOSTED and not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL must point to the production PostgreSQL database.")
+if _IS_HOSTED and not DATABASE_URL.startswith(("postgres://", "postgresql://")):
+    raise RuntimeError("Hosted Smart Campus deployments require a PostgreSQL DATABASE_URL.")
+
 # Render and Supabase both hand out "postgres://" URLs, which SQLAlchemy 2.0 no
 # longer accepts. Normalise the scheme before the engine is created.
 if DATABASE_URL.startswith("postgres://"):
