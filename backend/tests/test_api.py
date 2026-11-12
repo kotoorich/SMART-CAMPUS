@@ -147,6 +147,27 @@ def test_academic_directory_and_role_boundaries(admin, faculty, student):
     assert data["faculties"] and data["departments"] and data["programmes"]
     lecturer = client.post("/login", json={"email": FACULTY[0], "password": FACULTY[1], "selected_role": "faculty"}).json()
     own_department = lecturer["department_id"]
+    institution = lecturer["institution_name"]
+    own_directory = client.get("/academic/academic-directory", headers=faculty)
+    assert own_directory.status_code == 200
+    assert all(x["institution_name"] == institution for x in own_directory.json()["faculties"])
+    new_faculty = client.post("/academic/faculties", headers=faculty, json={
+        "name": "CI Institution Faculty", "code": "CI-INS-FAC",
+    })
+    assert new_faculty.status_code == 201, new_faculty.text
+    new_department = client.post("/academic/departments", headers=faculty, json={
+        "name": "CI Institution Department", "code": "CI-INS-DEPT",
+        "faculty_id": new_faculty.json()["id"],
+    })
+    assert new_department.status_code == 201, new_department.text
+    new_programme = client.post("/academic/programmes", headers=faculty, json={
+        "name": "CI Institution Programme", "code": "CI-INS-PROG",
+        "department_id": new_department.json()["id"],
+    })
+    assert new_programme.status_code == 201, new_programme.text
+    assert client.post("/academic/faculties", headers=admin, json={
+        "name": "Admin Must Not Create", "code": "CI-ADMIN-FAC",
+    }).status_code == 403
     assert own_department
     created = client.post("/academic/programmes", headers=faculty, json={
         "name": "CI Lecturer Programme", "code": "CI-PROG-1",
