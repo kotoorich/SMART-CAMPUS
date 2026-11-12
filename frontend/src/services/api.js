@@ -59,6 +59,9 @@ export const signupStudent = (payload) =>
 
 export const getAcademicDirectory = (admin = false, institutionName = "") => apiFetch(admin ? "/admin/academic-directory" : `/public/academic-directory${institutionName ? `?institution_name=${encodeURIComponent(institutionName)}` : ""}`)
 export const getMyAcademicDirectory = () => apiFetch("/academic/academic-directory")
+export const adminDeleteFaculty = (id) => apiFetch(`/admin/academic/faculties/${id}`, { method: "DELETE" })
+export const adminDeleteDepartment = (id) => apiFetch(`/admin/academic/departments/${id}`, { method: "DELETE" })
+export const adminDeleteProgramme = (id) => apiFetch(`/admin/academic/programmes/${id}`, { method: "DELETE" })
 export const getInstitutions = () => apiFetch("/public/institutions")
 export const createFaculty = (body) => apiFetch("/academic/faculties", { method: "POST", body: JSON.stringify(body) })
 export const updateFaculty = (id, body) => apiFetch(`/academic/faculties/${id}`, { method: "PUT", body: JSON.stringify(body) })
