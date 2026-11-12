@@ -440,6 +440,22 @@ In the service dashboard, open **Environment → Add Environment Variable** and 
 - Generate a unique JWT secret. Do not reuse your database password or administrator password.
 - Save environment changes and allow Render to restart/redeploy the service.
 
+### If this Render service is your public demo instance
+
+Keep `ENVIRONMENT=production` so production security checks remain enabled. Only if this service uses a **separate demo-only Supabase project/database** with no real institutional or student data, change these values:
+
+| Key | Demo service value |
+|---|---|
+| `SEED_DEMO_DATA` | `true` |
+| `ALLOW_DEMO_SEED_IN_PRODUCTION` | `true` |
+| `DEMO_ADMIN_NAME` / `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD` | Set the demo administrator details/password |
+| `DEMO_FACULTY_NAME` / `DEMO_FACULTY_EMAIL` / `DEMO_FACULTY_PASSWORD` | Set the demo lecturer details/password |
+| `DEMO_STUDENT_NAME` / `DEMO_STUDENT_EMAIL` / `DEMO_STUDENT_PASSWORD` | Set the demo student details/password |
+| `DEMO_STUDENT_INDEX_NUMBER` | A demo-only index number, e.g. `2024001` |
+| `DEMO_DEPARTMENT` | The demo department name |
+
+Use passwords only for these demo accounts; never reuse your own, administrator, database or institutional passwords. The demo seeder synchronizes these demo users (including their passwords) at each backend startup. The production login page currently hides the local demo-credentials panel, so share demo login details separately with testers if needed. Never turn these two flags on against the real institutional database.
+
 ### Verify the Render API before deploying the frontend
 
 Open these URLs using your actual Render hostname:
