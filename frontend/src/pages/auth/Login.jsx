@@ -96,8 +96,10 @@ export default function Login() {
             {error && <div className="auth-error" role="alert">{error}</div>}
             <button className="auth-submit" type="submit" disabled={loading}>{loading ? <><span className="button-spinner"/> Signing you in...</> : <>Continue to {activeRole.label}<ArrowRight size={18}/></>}</button>
 
-            {role === "student" && <p className="auth-register">New student? <button type="button" onClick={() => navigate("/signup")}>Register here</button></p>}
-            {role === "faculty" && <p className="auth-register">New lecturer? <button type="button" onClick={() => navigate("/lecturer/signup")}>Register your staff account</button></p>}
+            <div className="auth-register-options" aria-label="Registration options">
+              <p className="auth-register">New student? <button type="button" onClick={() => navigate("/signup")}>Register here</button></p>
+              <p className="auth-register">New lecturer? <button type="button" onClick={() => navigate("/lecturer/signup")}>Register your staff account</button></p>
+            </div>
             {import.meta.env.DEV && <details className="demo-access"><summary>Local demo accounts</summary><div><span>Evelyn Owusu · Administrator</span><code>admin@smartcampus.com / Admin@12345</code></div><div><span>Daniel Mensah · Lecturer</span><code>faculty1@smartcampus.com / Lecturer@12345</code></div><div><span>Ama Serwaa · Student</span><code>student@smartcampus.com / Student@12345</code></div><small>These development-only accounts are configured in backend/.env and are disabled in production.</small></details>}
             <div className="auth-card-footer"><ShieldCheck size={14}/> Your information is protected with secure sign-in</div>
           </form>
