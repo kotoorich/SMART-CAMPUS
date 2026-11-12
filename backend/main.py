@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Body, Depends
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -119,14 +120,16 @@ def root():
 
 @app.get("/health")
 def health():
-    # Lightweight liveness/readiness probe for Render and other platforms.
+    """Readiness probe: Render must receive a non-2xx response if DB is down."""
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        db_ok = True
+        return {"status": "ok", "database": True}
     except Exception:
-        db_ok = False
-    return {"status": "ok" if db_ok else "degraded", "database": db_ok}
+        return JSONResponse(
+            status_code=503,
+            content={"status": "degraded", "database": False},
+        )
 
 
 # ── Login ─────────────────────────────────────────────────────────────────────
