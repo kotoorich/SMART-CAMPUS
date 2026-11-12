@@ -29,7 +29,7 @@ class StudentSignup(BaseModel):
     interests: Optional[str] = ""
     phone: str = Field(min_length=7, max_length=24)
     identity_document_type: str = Field(default="ghana_card", pattern="^(ghana_card|passport)$")
-    identity_document_number: str = Field(min_length=6, max_length=32)
+    identity_document_number: Optional[str] = Field(default=None, min_length=6, max_length=32)
     ghana_card_number: Optional[str] = None
     registration_selfie: str = Field(min_length=100)
     biometric_method: str = Field(default="selfie", pattern="^(selfie|device_biometric)$")
