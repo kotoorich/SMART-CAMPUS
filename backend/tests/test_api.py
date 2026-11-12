@@ -238,7 +238,8 @@ def test_lecturer_can_edit_own_course_details(admin, faculty):
         "name": "Other Lecturer", "email": "other.lecturer@smartcampus.com",
         "password": "Lecturer@12345", "staff_id": "STF-OTHER", "institution_name": "Smart Campus",
     }).json()
-    other = client.post("/academic/courses", headers=faculty, json={
+    other_credentials = ("other.lecturer@smartcampus.com", "Lecturer@12345", "faculty")
+    other = client.post("/academic/courses", headers=auth(other_credentials), json={
         "title": "Not Mine", "code": "NM101", "lecturer_id": other_faculty["id"],
         "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"],
         "level": "100", "semester": "First Semester", "academic_year": "2025/2026",
