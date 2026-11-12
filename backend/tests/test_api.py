@@ -128,6 +128,37 @@ def test_seed_has_three_accounts_and_courses(admin):
         db.close()
 
 
+def test_academic_directory_and_role_boundaries(admin, faculty, student):
+    directory = client.get("/public/academic-directory")
+    assert directory.status_code == 200
+    data = directory.json()
+    assert data["faculties"] and data["departments"] and data["programmes"]
+    lecturer = client.post("/login", json={"email": FACULTY[0], "password": FACULTY[1], "selected_role": "faculty"}).json()
+    own_department = lecturer["department_id"]
+    assert own_department
+    created = client.post("/academic/programmes", headers=faculty, json={
+        "name": "CI Lecturer Programme", "code": "CI-PROG-1",
+        "department_id": own_department, "award": "BSc", "duration_years": 4,
+    })
+    assert created.status_code == 201, created.text
+    assert client.post("/academic/programmes", headers=admin, json={
+        "name": "Admin Must Not Create", "code": "CI-ADMIN-PROG",
+        "department_id": own_department, "award": "BSc", "duration_years": 4,
+    }).status_code == 403
+    assert client.post("/academic/programmes", headers=student, json={
+        "name": "Student Must Not Create", "code": "CI-STUDENT-PROG",
+        "department_id": own_department,
+    }).status_code == 403
+    other_department = next(d["id"] for d in data["departments"] if d["id"] != own_department)
+    assert client.post("/academic/programmes", headers=faculty, json={
+        "name": "Outside Department", "code": "CI-OUTSIDE-PROG",
+        "department_id": other_department,
+    }).status_code == 403
+    assert client.post("/academic/courses", headers=admin, json={
+        "title": "Admin Course", "code": "CI-ADMIN-COURSE", "programme_id": data["programmes"][0]["id"],
+    }).status_code == 403
+
+
 def test_student_signup_with_institution_profile():
     res = client.post("/student/signup", json={
         "name": "New Applicant", "index_number": "2024999", "email": "applicant@example.com",
