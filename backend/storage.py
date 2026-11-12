@@ -30,6 +30,9 @@ def _storage_config():
     url = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
     service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
     bucket = os.getenv("SUPABASE_STORAGE_BUCKET", "attendance-selfies").strip()
+    is_render = os.getenv("RENDER", "").lower() == "true"
+    if not bucket:
+        raise RuntimeError("SUPABASE_STORAGE_BUCKET must contain the name of your private Storage bucket.")
     if bool(url) != bool(service_key):
         raise RuntimeError("Configure both SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.")
     requested = os.getenv("STORAGE_BACKEND", "").strip().lower()
@@ -37,12 +40,14 @@ def _storage_config():
         raise RuntimeError("STORAGE_BACKEND must be either 'supabase' or 'local'.")
     if requested == "supabase" and not (url and service_key):
         raise RuntimeError("STORAGE_BACKEND=supabase requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.")
-    if os.getenv("RENDER", "").lower() == "true" and not (url and service_key):
+    if is_render and requested == "local":
+        raise RuntimeError("Render must use Supabase Storage. Set STORAGE_BACKEND=supabase.")
+    if is_render and not (url and service_key):
         raise RuntimeError(
             "Production photo storage is not configured. Set SUPABASE_URL, "
             "SUPABASE_SERVICE_ROLE_KEY and SUPABASE_STORAGE_BUCKET in Render."
         )
-    use_supabase = requested == "supabase" or (not requested and bool(url and service_key))
+    use_supabase = requested == "supabase" or (is_render and bool(url and service_key)) or (not requested and bool(url and service_key))
     return use_supabase, url, service_key, bucket
 
 
