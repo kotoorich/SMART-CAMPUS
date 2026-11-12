@@ -339,12 +339,12 @@ def test_room_booking_conflict_between_lecturers(admin, faculty):
     }).json()
     assert first["lecturer_id"] == lecturer_id
     booked = client.post(f"/faculty/courses/{first['id']}/schedule", headers=faculty, json={
-        "day_of_week": 0, "start_time": "09:00", "end_time": "10:00",
+        "day_of_week": 5, "start_time": "17:00", "end_time": "18:00",
         "building": "Science Block", "room_no": "ROOM-X", "class_type": "theory",
     })
     assert booked.status_code == 201, booked.text
     conflict = client.post(f"/faculty/courses/{second['id']}/schedule", headers=second_auth, json={
-        "day_of_week": 0, "start_time": "09:30", "end_time": "10:30",
+        "day_of_week": 5, "start_time": "17:30", "end_time": "18:30",
         "building": "Science Block", "room_no": "ROOM-X", "class_type": "theory",
     })
     assert conflict.status_code == 409, conflict.text
