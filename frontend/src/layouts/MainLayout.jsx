@@ -5,14 +5,32 @@ import RoleTour from "./RoleTour";
 import { useAuth } from "../context/AuthContext";
 
 export default function MainLayout({ children }) {
-  const [navOpen, setNavOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [desktopNavCollapsed, setDesktopNavCollapsed] = useState(false);
   const { user } = useAuth();
+
+  const toggleNavigation = () => {
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      setMobileNavOpen((open) => !open);
+    } else {
+      setDesktopNavCollapsed((collapsed) => !collapsed);
+    }
+  };
+
+  const closeMobileNavigation = () => setMobileNavOpen(false);
+
   return (
-    <div className={`app-shell ${navOpen ? "nav-open" : ""}`}>
-      <div className="app-nav-scrim" onClick={() => setNavOpen(false)} />
-      <Sidebar onNavigate={() => setNavOpen(false)} />
+    <div className={`app-shell ${mobileNavOpen ? "nav-open" : ""} ${desktopNavCollapsed ? "nav-collapsed" : ""}`}>
+      <button
+        type="button"
+        className="app-nav-scrim"
+        onClick={closeMobileNavigation}
+        aria-label="Close navigation"
+        tabIndex={mobileNavOpen ? 0 : -1}
+      />
+      <Sidebar onNavigate={closeMobileNavigation} />
       <div className="app-main">
-        <Header navOpen={navOpen} onToggleNav={() => setNavOpen((v) => !v)} />
+        <Header navOpen={mobileNavOpen} onToggleNav={toggleNavigation} />
         <main className="app-content">{children}</main>
       </div>
       {user && <RoleTour role={user.role} />}
