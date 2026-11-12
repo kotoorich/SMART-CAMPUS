@@ -223,6 +223,9 @@ def seed_data():
         user.password = hash_password(record["password"])
         user.role = record["role"]
         user.department = record["department"]
+        if record["role"] == "faculty":
+            user.department_id = structure["department_id"]
+            user.faculty_name = "School of Computing and Information Sciences"
         user.index_number = record.get("index_number")
         user.is_approved = True
         if record["role"] == "student":
