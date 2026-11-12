@@ -156,9 +156,9 @@ def lecturer_signup(body: LecturerSignup, db: Session = Depends(get_db)):
     free = _setting(db, "lecturer_registration_free", "true").lower() == "true"
     amount = int(_setting(db, "lecturer_registration_fee_pesewas", "0"))
     lecturer = User(name=body.name.strip(), email=email, password=hash_password(body.password),
-                    role="faculty", department=(body.department_name.strip() or (department.name if department else None)),
-                    department_id=department.id if department else None,
-                    institution_name=body.institution_name.strip(), faculty_name=(body.faculty_name or "").strip() or None,
+                    role="faculty", department=department.name,
+                    department_id=department.id,
+                    institution_name=body.institution_name.strip(), faculty_name=faculty_record.name,
                     programme_name=(body.programme_name or "").strip() or None, designation=(body.designation or "").strip() or None,
                     phone=body.phone.strip(), staff_id=staff_id,
                     ghana_card_hash=legacy_ghana_hash, ghana_card_last4=document_number[-4:] if document_type == "ghana_card" else None,
