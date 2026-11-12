@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus, RefreshCw, Building2, Layers3, GraduationCap, Trash2, Pencil, Eye } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import { useAuth } from "../../context/AuthContext";
-import { getAcademicDirectory, getMyAcademicDirectory, createFaculty, createDepartment, createProgramme, updateFaculty, updateDepartment, updateProgramme, deleteFaculty, deleteDepartment, deleteProgramme } from "../../services/api";
+import { getAcademicDirectory, getMyAcademicDirectory, createFaculty, createDepartment, createProgramme, updateFaculty, updateDepartment, updateProgramme, deleteFaculty, deleteDepartment, deleteProgramme, adminDeleteFaculty, adminDeleteDepartment, adminDeleteProgramme } from "../../services/api";
 
 const emptyFaculty = { name: "", code: "", dean: "" };
 const emptyDepartment = { name: "", code: "", faculty_id: "", head: "" };
@@ -40,6 +40,15 @@ export default function AcademicStructure() {
     e.preventDefault();
     const saved = await run(() => fn(form), "Academic structure saved successfully.");
     if (saved) reset();
+  };
+
+  const adminDelete = (kind, item) => {
+    const labels = { faculty: "faculty / school", department: "department", programme: "programme" };
+    const label = labels[kind];
+    const confirmed = window.confirm(`Delete this ${label}: "${item.name}" from ${item.institution_name || "its institution"}? This cannot be undone. The system will block deletion if other records depend on it.`);
+    if (!confirmed) return;
+    const actions = { faculty: adminDeleteFaculty, department: adminDeleteDepartment, programme: adminDeleteProgramme };
+    run(() => actions[kind](item.id), `${label.charAt(0).toUpperCase() + label.slice(1)} deleted.`);
   };
 
   const editFaculty = (item) => {
@@ -102,20 +111,20 @@ export default function AcademicStructure() {
       <section className="academic-panel">
         <div className="flex items-center gap-2 mb-3"><Building2 size={18}/><h2 className="font-semibold">Faculties / Schools</h2></div>
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {directory.faculties.map(f => <article key={f.id} className="rounded-xl border p-4"><div className="flex justify-between gap-2"><div><b>{f.name}</b><p className="text-xs text-slate-500">{f.code || "No code"}{admin && f.institution_name ? " · " + f.institution_name : ""}</p></div>{admin ? <Eye size={16}/> : <div className="flex gap-2"><button type="button" onClick={() => editFaculty(f)} aria-label="Edit faculty"><Pencil size={15}/></button><button type="button" onClick={() => run(() => deleteFaculty(f.id), "Faculty deleted.")} aria-label="Delete faculty" className="text-red-600"><Trash2 size={15}/></button></div>}</div><p className="text-xs text-slate-500 mt-2">{directory.departments.filter(d => d.faculty_id === f.id).length} departments</p></article>)}
+          {directory.faculties.map(f => <article key={f.id} className="rounded-xl border p-4"><div className="flex justify-between gap-2"><div><b>{f.name}</b><p className="text-xs text-slate-500">{f.code || "No code"}{admin && f.institution_name ? " · " + f.institution_name : ""}</p></div>{admin ? <button type="button" onClick={() => adminDelete("faculty", f)} aria-label="Delete faculty" title="Delete faculty" className="text-red-600 disabled:opacity-40" disabled={busy}><Trash2 size={16}/></button> : <div className="flex gap-2"><button type="button" onClick={() => editFaculty(f)} aria-label="Edit faculty"><Pencil size={15}/></button><button type="button" onClick={() => run(() => deleteFaculty(f.id), "Faculty deleted.")} aria-label="Delete faculty" className="text-red-600"><Trash2 size={15}/></button></div>}</div><p className="text-xs text-slate-500 mt-2">{directory.departments.filter(d => d.faculty_id === f.id).length} departments</p></article>)}
           {!directory.faculties.length && <p className="text-sm text-slate-500">No faculties have been created yet.</p>}
         </div>
       </section>
 
       <section className="academic-panel">
         <h2 className="font-semibold mb-3">Departments</h2>
-        <div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm"><thead><tr className="text-left border-b text-slate-500"><th className="py-2">Department</th><th>Faculty / School</th><th>Code</th>{admin && <th>Institution</th>}{!admin && <th>Actions</th>}</tr></thead><tbody>{directory.departments.map(d => <tr key={d.id} className="border-b"><td className="py-3 font-medium">{d.name}</td><td>{directory.faculties.find(f => f.id === d.faculty_id)?.name || "—"}</td><td>{d.code || "—"}</td>{admin && <td>{d.institution_name || "—"}</td>}{!admin && <td><div className="flex gap-2"><button type="button" onClick={() => editDepartment(d)} aria-label="Edit department"><Pencil size={14}/></button><button type="button" onClick={() => run(() => deleteDepartment(d.id), "Department deleted.")} className="text-red-600" aria-label="Delete department"><Trash2 size={15}/></button></div></td>}</tr>)}</tbody></table></div>
+        <div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm"><thead><tr className="text-left border-b text-slate-500"><th className="py-2">Department</th><th>Faculty / School</th><th>Code</th>{admin && <th>Institution</th>}<th>Actions</th></tr></thead><tbody>{directory.departments.map(d => <tr key={d.id} className="border-b"><td className="py-3 font-medium">{d.name}</td><td>{directory.faculties.find(f => f.id === d.faculty_id)?.name || "—"}</td><td>{d.code || "—"}</td>{admin && <td>{d.institution_name || "—"}</td>}<td><div className="flex gap-2">{admin ? <button type="button" onClick={() => adminDelete("department", d)} disabled={busy} className="text-red-600 disabled:opacity-40" aria-label="Delete department" title="Delete department"><Trash2 size={15}/></button> : <><button type="button" onClick={() => editDepartment(d)} aria-label="Edit department"><Pencil size={14}/></button><button type="button" onClick={() => run(() => deleteDepartment(d.id), "Department deleted.")} className="text-red-600" aria-label="Delete department"><Trash2 size={15}/></button></>}</div></td>}</tr>)}</tbody></table></div>
         {!directory.departments.length && <p className="text-sm text-slate-500 py-3">No departments have been created yet.</p>}
       </section>
 
       <section className="academic-panel">
         <h2 className="font-semibold mb-3">Programmes</h2>
-        <div className="overflow-x-auto"><table className="w-full min-w-[650px] text-sm"><thead><tr className="text-left border-b text-slate-500"><th className="py-2">Programme</th><th>Code</th><th>Department</th><th>Award</th><th>Duration</th>{admin && <th>Institution</th>}{!admin && <th>Actions</th>}</tr></thead><tbody>{directory.programmes.map(p => <tr key={p.id} className="border-b"><td className="py-3 font-medium">{p.name}</td><td>{p.code || "—"}</td><td>{directory.departments.find(d => d.id === p.department_id)?.name || "—"}</td><td>{p.award || "—"}</td><td>{p.duration_years || "—"} years</td>{admin && <td>{p.institution_name || "—"}</td>}{!admin && <td><div className="flex gap-2"><button type="button" onClick={() => editProgramme(p)} aria-label="Edit programme"><Pencil size={14}/></button><button type="button" onClick={() => run(() => deleteProgramme(p.id), "Programme deleted.")} className="text-red-600" aria-label="Delete programme"><Trash2 size={15}/></button></div></td>}</tr>)}</tbody></table></div>
+        <div className="overflow-x-auto"><table className="w-full min-w-[650px] text-sm"><thead><tr className="text-left border-b text-slate-500"><th className="py-2">Programme</th><th>Code</th><th>Department</th><th>Award</th><th>Duration</th>{admin && <th>Institution</th>}<th>Actions</th></tr></thead><tbody>{directory.programmes.map(p => <tr key={p.id} className="border-b"><td className="py-3 font-medium">{p.name}</td><td>{p.code || "—"}</td><td>{directory.departments.find(d => d.id === p.department_id)?.name || "—"}</td><td>{p.award || "—"}</td><td>{p.duration_years || "—"} years</td>{admin && <td>{p.institution_name || "—"}</td>}<td><div className="flex gap-2">{admin ? <button type="button" onClick={() => adminDelete("programme", p)} disabled={busy} className="text-red-600 disabled:opacity-40" aria-label="Delete programme" title="Delete programme"><Trash2 size={15}/></button> : <><button type="button" onClick={() => editProgramme(p)} aria-label="Edit programme"><Pencil size={14}/></button><button type="button" onClick={() => run(() => deleteProgramme(p.id), "Programme deleted.")} className="text-red-600" aria-label="Delete programme"><Trash2 size={15}/></button></>}</div></td>}</tr>)}</tbody></table></div>
         {!directory.programmes.length && <p className="text-sm text-slate-500 py-3">No programmes have been created yet.</p>}
       </section>
     </div>
