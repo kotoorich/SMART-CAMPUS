@@ -1,0 +1,51 @@
+# Render Blueprint for the Smart Campus backend (FastAPI).
+#
+# How to use:
+#   1. Push this repository to GitHub.
+#   2. In the Render dashboard choose New + > Blueprint and select the repo.
+#   3. Render reads this file, creates the web service and asks you to fill in
+#      the environment variables marked "sync: false" (secrets).
+#   4. Set DATABASE_URL to your Supabase connection string, CORS_ORIGINS to your
+#      Vercel URL and JWT_SECRET_KEY to a long random string.
+#
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: smart-campus-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      - key: ENVIRONMENT
+        value: production
+      - key: APP_TIMEZONE
+        value: Africa/Accra
+      - key: ATTENDANCE_GPS_RADIUS_METERS
+        value: "50"
+      - key: ATTENDANCE_GPS_ACCURACY_CEILING
+        value: "500"
+      - key: ATTENDANCE_GPS_SESSION_ACCURACY_CEILING
+        value: "500"
+      - key: INSTITUTION_NAME
+        value: Smart Campus
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: SEED_DEMO_DATA
+        value: "false"
+      # Set these in the Render dashboard (marked as secrets).
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: BOOTSTRAP_ADMIN_NAME
+        sync: false
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
