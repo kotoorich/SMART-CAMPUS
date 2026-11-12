@@ -87,7 +87,9 @@ Do not add quotation marks around values. Keep these values private. Never put t
 
 Render automatically identifies its hosted environment. You do **not** need to add separate environment variables for the institution name, timezone, attendance radius, GPS accuracy, attendance duration, student approval policy or course registration policy. Those settings are handled by the application. The administrator can configure the supported institution policies from the app's Settings pages.
 
-Paid lecturer registration additionally requires `PAYSTACK_SECRET_KEY` and `PAYSTACK_CALLBACK_URL` in Render. Set the callback URL to `https://YOUR-VERCEL-DOMAIN/lecturer/payment/callback`. These two variables are only required if paid lecturer registration is enabled; free lecturer registration does not require Paystack. Keep the Paystack secret on the backend only.\n\nThe first administrator is created from the bootstrap email and password when the database is first initialized. Once that account exists, changing the bootstrap variables will not reset its password; use the in-app account controls.
+Paid lecturer registration additionally requires `PAYSTACK_SECRET_KEY` and `PAYSTACK_CALLBACK_URL` in Render. Set the callback URL to `https://YOUR-VERCEL-DOMAIN/lecturer/payment/callback`. These two variables are only required if paid lecturer registration is enabled; free lecturer registration does not require Paystack. Keep the Paystack secret on the backend only.
+
+The first administrator is created from the bootstrap email and password when the database is first initialized. Once that account exists, changing the bootstrap variables will not reset its password; use the in-app account controls.
 
 Demo seeding is disabled on Render, including when `SEED_DEMO_DATA=true` is accidentally present. The sample users and sample academic records are for local development only. Never connect a public demo database containing real student records.
 
