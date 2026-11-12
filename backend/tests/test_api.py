@@ -135,7 +135,7 @@ def test_student_signup_with_institution_profile():
         "ghana_card_number": "GHA-123456789-0", "registration_selfie": _selfie_b64(),
         "consent_biometrics": True, "institution_name": "Example University",
         "faculty_name": "School of Technology", "department_name": "Computing",
-        "programme_name": "BSc Computer Science", "academic_year": "2026/2027",
+        "programme_name": "BSc Computer Science", "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"], "academic_year": "2026/2027",
         "level": 100, "interests": "ai",
     })
     assert res.status_code == 200, res.text
@@ -154,7 +154,7 @@ def test_student_signup_with_institution_profile():
 # ── Course + batch + timetable integration ──────────────────────────────────
 def test_course_timetable_integration(admin, faculty, student):
     lecturer_id = _lecturer_id(admin)
-    res = client.post("/academic/courses", headers=admin, json={
+    res = client.post("/academic/courses", headers=faculty, json={
         "title": "Integration Test Course", "code": "ITC101", "lecturer_id": lecturer_id,
         "level": "100", "semester": "First Semester", "credit_hours": 3,
         "is_published": True, "registration_open": True, "enrolment_requires_approval": False,
@@ -236,7 +236,7 @@ def test_lecturer_can_edit_own_course_details(admin, faculty):
         "name": "Other Lecturer", "email": "other.lecturer@smartcampus.com",
         "password": "Lecturer@12345", "staff_id": "STF-OTHER", "institution_name": "Smart Campus",
     }).json()
-    other = client.post("/academic/courses", headers=admin, json={
+    other = client.post("/academic/courses", headers=faculty, json={
         "title": "Not Mine", "code": "NM101", "lecturer_id": other_faculty["id"],
         "level": "100", "semester": "First Semester", "academic_year": "2025/2026",
         "programme_name": "BSc. Information Technology"}).json()
@@ -246,7 +246,7 @@ def test_lecturer_can_edit_own_course_details(admin, faculty):
     assert client.delete(f"/academic/courses/{mine['id']}", headers=admin).status_code == 200
 
 
-def test_create_course_with_programme_id_derives_department(admin):
+def test_create_course_with_programme_id_derives_department(admin, faculty):
     """Regression: creating a course by programme_id must not raise NameError.
 
     The course form offers a programme dropdown that posts programme_id; the
@@ -254,7 +254,7 @@ def test_create_course_with_programme_id_derives_department(admin):
     """
     lecturer_id = _lecturer_id(admin)
     pid = client.get("/academic/courses", headers=admin).json()[0]["programme_ids"][0]
-    res = client.post("/academic/courses", headers=admin, json={
+    res = client.post("/academic/courses", headers=faculty, json={
         "title": "Programme Scoped Course", "code": "PROG501", "lecturer_id": lecturer_id,
         "level": "100", "semester": "First Semester", "academic_year": "2025/2026",
         "programme_id": pid, "batch_names": ["Batch PROG"]})
@@ -298,7 +298,7 @@ def test_enrol_by_course_and_batch(admin, faculty, student):
     other = next(c for c in courses if c["code"] == "DB201")
     # A course that defines batches requires an explicit batch selection.
     lecturer_id = _lecturer_id(admin)
-    res = client.post("/academic/courses", headers=admin, json={
+    res = client.post("/academic/courses", headers=faculty, json={
         "title": "Batch Required Course", "code": "BRC101", "lecturer_id": lecturer_id,
         "credit_hours": 1, "is_published": True, "registration_open": True,
         "batch_names": ["Only Batch"],
@@ -336,11 +336,11 @@ def test_class_list_has_students(admin, faculty, student):
     assert itc["students"], "class list should include the enrolled student"
 
 
-def test_enrolment_credit_cap(admin, student):
+def test_enrolment_credit_cap(admin, faculty, student):
     original = client.get("/admin/settings", headers=admin).json()
     client.put("/admin/settings", headers=admin, json={**original, "max_credits_per_semester": 3})
     lecturer_id = _lecturer_id(admin)
-    res = client.post("/academic/courses", headers=admin, json={
+    res = client.post("/academic/courses", headers=faculty, json={
         "title": "Cap Test Course", "code": "CAP101", "lecturer_id": lecturer_id,
         "credit_hours": 3, "is_published": True, "registration_open": True,
     })
@@ -375,9 +375,9 @@ def test_student_timetable_week_is_day_keyed(student):
     assert set(res.json()) == {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
 
 
-def test_timetable_update_and_delete(admin):
+def test_timetable_update_and_delete(admin, faculty):
     lecturer_id = _lecturer_id(admin)
-    res = client.post("/academic/courses", headers=admin, json={
+    res = client.post("/academic/courses", headers=faculty, json={
         "title": "Edit Test Course", "code": "EDT101", "lecturer_id": lecturer_id,
         "credit_hours": 2, "is_published": True, "registration_open": True,
     })
@@ -401,7 +401,7 @@ def test_timetable_update_and_delete(admin):
 def _make_today_course(admin, code, period):
     lecturer_id = _lecturer_id(admin)
     weekday = date.today().weekday()
-    res = client.post("/academic/courses", headers=admin, json={
+    res = client.post("/academic/courses", headers=faculty, json={
         "title": f"{code} Course", "code": code, "lecturer_id": lecturer_id,
         "credit_hours": 1, "is_published": True, "registration_open": True,
         "enrolment_requires_approval": False, "batch_names": ["Batch 1"],
@@ -422,7 +422,7 @@ def _make_today_course(admin, code, period):
 
 def test_attendance_can_open_without_timetable_and_outside_class_time(admin, faculty):
     lecturer_id = _lecturer_id(admin)
-    res = client.post("/academic/courses", headers=admin, json={
+    res = client.post("/academic/courses", headers=faculty, json={
         "title": "Flexible Attendance Course", "code": "FLEX901", "lecturer_id": lecturer_id,
         "credit_hours": 1, "is_published": True, "registration_open": True,
     })
@@ -779,7 +779,7 @@ def test_session_opens_with_coarse_laptop_gps_fix(admin, faculty):
     fix is usable; proximity is judged by distance against the session radius,
     not by the reported accuracy radius."""
     lecturer_id = _lecturer_id(admin)
-    course = client.post("/academic/courses", headers=admin, json={
+    course = client.post("/academic/courses", headers=faculty, json={
         "title": "Coarse GPS Course", "code": "GPS901", "lecturer_id": lecturer_id,
         "credit_hours": 1, "is_published": True, "registration_open": True,
     }).json()
