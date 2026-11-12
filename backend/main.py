@@ -46,12 +46,14 @@ app.add_middleware(
 )
 
 from routers.admin import router as admin_router
+from routers.academic_structure import router as academic_structure_router
 from routers.academic import router as academic_router
 from routers.realtime_routes import router as realtime_router
 from routers.attendance import router as attendance_router
 from routers.assessments import router as assessments_router
 from routers.registration import router as registration_router
 app.include_router(admin_router)
+app.include_router(academic_structure_router)
 app.include_router(academic_router)
 app.include_router(realtime_router)
 app.include_router(attendance_router)
