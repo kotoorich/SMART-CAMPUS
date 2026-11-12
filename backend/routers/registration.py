@@ -79,11 +79,7 @@ class LecturerSignup(BaseModel):
     email: str = Field(min_length=5, max_length=254)
     phone: str = Field(min_length=7, max_length=24)
     password: str = Field(min_length=8, max_length=128)
-    department_id: Optional[int] = None
     institution_name: str = Field(min_length=2, max_length=180)
-    faculty_name: str = Field(min_length=2, max_length=160)
-    department_name: str = Field(min_length=2, max_length=160)
-    programme_name: str = Field(min_length=2, max_length=180)
     designation: Optional[str] = Field(default=None, max_length=120)
     identity_document_type: str = Field(default="ghana_card", pattern="^(ghana_card|passport)$")
     identity_document_number: Optional[str] = Field(default=None, min_length=6, max_length=32)
@@ -140,26 +136,16 @@ def lecturer_signup(body: LecturerSignup, db: Session = Depends(get_db)):
     legacy_ghana_hash = _ghana_hash(document_number) if document_type == "ghana_card" else None
     if legacy_ghana_hash and db.query(User).filter(User.ghana_card_hash == legacy_ghana_hash).first():
         raise HTTPException(409, "This Ghana Card is already associated with an account")
-    department = None
-    if body.department_id:
-        department = db.query(Department).filter(Department.id == body.department_id).first()
-        if not department:
-            raise HTTPException(404, "Department not found")
-    if not department:
-        raise HTTPException(422, "Select a department from the institution directory")
-    faculty_record = db.query(Faculty).filter(Faculty.id == department.faculty_id).first() if department.faculty_id else None
-    if not faculty_record:
-        raise HTTPException(422, "The selected department is not linked to a faculty or school")
     if not body.consent_biometrics:
         raise HTTPException(422, "Consent is required to collect and process your registration selfie")
     photo_ref = save_selfie(body.registration_selfie)
     free = _setting(db, "lecturer_registration_free", "true").lower() == "true"
     amount = int(_setting(db, "lecturer_registration_fee_pesewas", "0"))
     lecturer = User(name=body.name.strip(), email=email, password=hash_password(body.password),
-                    role="faculty", department=department.name,
-                    department_id=department.id,
-                    institution_name=body.institution_name.strip(), faculty_name=faculty_record.name,
-                    programme_name=(body.programme_name or "").strip() or None, designation=(body.designation or "").strip() or None,
+                    role="faculty", department=None,
+                    department_id=None,
+                    institution_name=body.institution_name.strip(), faculty_name=None,
+                    programme_name=None, designation=(body.designation or "").strip() or None,
                     phone=body.phone.strip(), staff_id=staff_id,
                     ghana_card_hash=legacy_ghana_hash, ghana_card_last4=document_number[-4:] if document_type == "ghana_card" else None,
                     identity_document_type=document_type, identity_document_hash=document_hash, identity_document_last4=document_number[-4:],
