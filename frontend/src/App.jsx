@@ -16,6 +16,7 @@ import AdminResources from "./pages/admin/AdminResources"
 import Settings from "./pages/Settings"
 import AcademicHub from "./pages/AcademicHub"
 import AcademicStructure from "./pages/admin/AcademicStructure"
+import AdminAcademicOversight from "./pages/AdminAcademicOversight"
 import RegistrationSettings from "./pages/admin/RegistrationSettings"
 import Announcements from "./pages/Announcements"
 import AuditLog from "./pages/AuditLog"
@@ -50,7 +51,7 @@ function AppRoutes() {
       <Route path="/admin/audit-log" element={<ProtectedRoute role="admin"><AuditLog /></ProtectedRoute>} />
       <Route path="/admin/grading-bands" element={<ProtectedRoute role="admin"><AdminResources type="grading" /></ProtectedRoute>} />
       <Route path="/admin/resources" element={<ProtectedRoute role="admin"><AdminResources type="courses" /></ProtectedRoute>} />
-      <Route path="/admin/academic" element={<ProtectedRoute role="admin"><AcademicHub mode="admin" /></ProtectedRoute>} />
+      <Route path="/admin/academic" element={<ProtectedRoute role="admin"><AdminAcademicOversight /></ProtectedRoute>} />
       <Route path="/admin/timetable" element={<Navigate to="/admin/academic" replace />} />
       <Route path="/admin/attendance-reports" element={<Navigate to="/admin/academic" replace />} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
