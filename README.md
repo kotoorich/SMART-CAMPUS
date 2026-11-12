@@ -174,7 +174,7 @@ The backend explicitly uses the installed `psycopg2-binary` driver for PostgreSQ
 
 **The API starts but the health check says the database is unavailable**
 
-Check that `DATABASE_URL` is the complete Supabase Session pooler URI, the database password is URL-encoded, and the Supabase project is active. Review the first database error in Render logs.
+Check that `DATABASE_URL` is the complete Supabase **Session pooler** URI copied from Supabase → Connect. Its structure should be `postgresql://postgres.<PROJECT_REF>:<URL_ENCODED_DB_PASSWORD>@aws-1-eu-west-2.pooler.supabase.com:5432/postgres` (use the exact pooler hostname and port shown by your Supabase project). The hostname must contain only the pooler host — never the database username, password, or `@` characters. URL-encode special characters in the password (for example, `@` as `%40`, `#` as `%23`, and `:` as `%3A`). In Render → Environment, replace the **entire** `DATABASE_URL` value, save, and redeploy. Do not paste the real connection string into chat or GitHub. If the Supabase project uses a different pooler region/host, use the exact host Supabase displays.
 
 **The browser reports a CORS error**
 
