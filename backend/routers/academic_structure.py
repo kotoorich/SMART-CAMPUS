@@ -6,7 +6,7 @@ own institution. Administrators have cross-institution read-only oversight.
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 
 from auth import get_current_user
@@ -301,3 +301,113 @@ def admin_delete_programme(programme_id: int, user: User = Depends(get_current_u
     audit(db, user, "delete", "programme_directory", programme_id, detail)
     publish_sync("academic_directory", {"action": "programme_directory_delete", "id": programme_id}, roles=["admin", "faculty"])
     return {"message": "Programme deleted"}
+
+
+class AcademicResetBody(BaseModel):
+    institution_name: str = Field(min_length=1, max_length=180)
+    confirmation: str = Field(min_length=5, max_length=220)
+
+
+def _institution_rows(db: Session, model, institution_name: str):
+    query = db.query(model)
+    if institution_name == "__unassigned__":
+        return query.filter(or_(model.institution_name.is_(None), func.trim(model.institution_name) == ""))
+    return query.filter(func.lower(func.trim(model.institution_name)) == institution_name.strip().casefold())
+
+
+def _academic_reset_snapshot(db: Session, institution_name: str):
+    faculties = _institution_rows(db, Faculty, institution_name).all()
+    departments = _institution_rows(db, Department, institution_name).all()
+    programmes = _institution_rows(db, Programme, institution_name).all()
+    faculty_ids = [x.id for x in faculties]
+    department_ids = [x.id for x in departments]
+    programme_ids = [x.id for x in programmes]
+    linked_users = db.query(User).filter(or_(
+        User.department_id.in_(department_ids) if department_ids else False,
+        User.programme_id.in_(programme_ids) if programme_ids else False,
+    )).count()
+    linked_courses = db.query(Course).filter(or_(
+        Course.department_id.in_(department_ids) if department_ids else False,
+        Course.programme_id.in_(programme_ids) if programme_ids else False,
+    )).count()
+    linked_course_programmes = db.query(CourseProgramme).filter(
+        CourseProgramme.programme_id.in_(programme_ids) if programme_ids else False
+    ).count()
+    return {
+        "faculties": faculties,
+        "departments": departments,
+        "programmes": programmes,
+        "counts": {
+            "faculties": len(faculties),
+            "departments": len(departments),
+            "programmes": len(programmes),
+            "linked_users": linked_users,
+            "linked_courses": linked_courses,
+            "linked_course_programmes": linked_course_programmes,
+        },
+    }
+
+
+@router.get("/admin/academic-directory/reset-preview")
+def admin_academic_reset_preview(
+    institution_name: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _admin_directory_user(user)
+    if not institution_name.strip():
+        raise HTTPException(400, "Select an institution before requesting a reset preview.")
+    snapshot = _academic_reset_snapshot(db, institution_name)
+    counts = snapshot["counts"]
+    blocked = counts["linked_users"] or counts["linked_courses"] or counts["linked_course_programmes"]
+    return {
+        "institution_name": institution_name,
+        "counts": counts,
+        "can_reset": not bool(blocked),
+        "message": (
+            "This institution's academic structure can be safely reset."
+            if not blocked else
+            "Reset is blocked because students, lecturers or courses still reference this structure. Existing academic and attendance records have been preserved."
+        ),
+    }
+
+
+@router.post("/admin/academic-directory/reset")
+def admin_reset_academic_directory(
+    body: AcademicResetBody,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _admin_directory_user(user)
+    institution = body.institution_name.strip()
+    expected = f"RESET {institution}"
+    if body.confirmation.strip() != expected:
+        raise HTTPException(400, f'Type exactly "{expected}" to confirm this reset.')
+
+    snapshot = _academic_reset_snapshot(db, institution)
+    counts = snapshot["counts"]
+    if counts["linked_users"] or counts["linked_courses"] or counts["linked_course_programmes"]:
+        raise HTTPException(
+            409,
+            "Reset blocked: this academic structure is linked to existing users or courses. No records were deleted. Remove or reassign those links through the normal academic workflows first.",
+        )
+
+    try:
+        for row in snapshot["programmes"]:
+            db.delete(row)
+        for row in snapshot["departments"]:
+            db.delete(row)
+        for row in snapshot["faculties"]:
+            db.delete(row)
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409, "Reset blocked by another linked record. No changes were committed.") from exc
+
+    detail = (
+        f"Institution={institution}; deleted faculties={counts['faculties']}, "
+        f"departments={counts['departments']}, programmes={counts['programmes']}"
+    )
+    audit(db, user, "reset", "academic_directory", institution, detail)
+    publish_sync("academic_directory", {"action": "academic_directory_reset", "institution_name": institution}, roles=["admin", "faculty"])
+    return {"message": "Academic structure reset completed.", "deleted": counts}
