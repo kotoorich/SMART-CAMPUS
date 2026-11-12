@@ -145,6 +145,11 @@ def lecturer_signup(body: LecturerSignup, db: Session = Depends(get_db)):
         department = db.query(Department).filter(Department.id == body.department_id).first()
         if not department:
             raise HTTPException(404, "Department not found")
+    if not department:
+        raise HTTPException(422, "Select a department from the institution directory")
+    faculty_record = db.query(Faculty).filter(Faculty.id == department.faculty_id).first() if department.faculty_id else None
+    if not faculty_record:
+        raise HTTPException(422, "The selected department is not linked to a faculty or school")
     if not body.consent_biometrics:
         raise HTTPException(422, "Consent is required to collect and process your registration selfie")
     photo_ref = save_selfie(body.registration_selfie)
