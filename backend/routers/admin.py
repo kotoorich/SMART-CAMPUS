@@ -219,7 +219,7 @@ class FacultyUpdate(BaseModel):
 def _faculty_dict(u: User):
     return {"id": u.id, "name": u.name, "email": u.email, "phone": u.phone,
             "staff_id": u.staff_id, "institution_name": u.institution_name,
-            "faculty_name": u.faculty_name, "department": u.department,
+            "faculty_name": u.faculty_name, "department": u.department, "department_id": u.department_id,
             "programme_name": u.programme_name, "designation": u.designation,
             "identity_status": u.identity_status, "has_registration_selfie": bool(u.registration_photo_ref),
             "ghana_card_last4": u.ghana_card_last4, "identity_document_type": u.identity_document_type, "identity_document_last4": u.identity_document_last4, "is_approved": u.is_approved}
