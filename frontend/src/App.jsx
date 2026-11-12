@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext"
 
 import Landing            from "./pages/Landing"
 import Login              from "./pages/auth/Login"
-import StudentSignup      from "./pages/student/StudentSignup"
+import StudentSignup      from "./pages/student/StudentSignupManaged"
 import FacultySignup from "./pages/faculty/FacultySignup"
 import LecturerPaymentCallback from "./pages/faculty/LecturerPaymentCallback"
 import AdminDashboard     from "./pages/admin/AdminDashboard"
