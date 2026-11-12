@@ -71,8 +71,9 @@ Use a normal **Web Service**. This project does not require a Render Blueprint.
 | Start Command | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
 | Health Check Path | `/health` |
 
-5. Create a PostgreSQL project in Supabase. In Supabase, copy the **Session pooler** connection string. Use the URI with the PostgreSQL scheme and port shown by Supabase (normally port `5432` for Session pooler). URL-encode special characters in the database password.
-6. In Render → **Environment**, add only these five variables:
+5. If you want registration and attendance selfies to remain available after a Render redeploy or restart, add a **Persistent Disk** to the service (Render → service → Disks) and set its mount path to `/var/data`. The app stores private uploaded photos under that path. Without a persistent disk, the API can still run, but uploaded photos on Render's temporary filesystem may be lost after a restart or deploy.
+6. Create a PostgreSQL project in Supabase. In Supabase, copy the **Session pooler** connection string. Use the URI with the PostgreSQL scheme and port shown by Supabase (normally port `5432` for Session pooler). URL-encode special characters in the database password.
+7. In Render → **Environment**, add only these five variables:
 
 | Variable | Value |
 |---|---|
