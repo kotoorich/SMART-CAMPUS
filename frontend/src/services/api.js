@@ -57,6 +57,14 @@ export const loginUser     = (email, password, role) =>
 export const signupStudent = (payload) =>
   apiFetch("/student/signup", { method: "POST", body: JSON.stringify(payload) })
 
+export const getAcademicDirectory = (admin = false) => apiFetch(admin ? "/admin/academic-directory" : "/public/academic-directory")
+export const createFaculty = (body) => apiFetch("/admin/faculties", { method: "POST", body: JSON.stringify(body) })
+export const deleteFaculty = (id) => apiFetch(`/admin/faculties/${id}`, { method: "DELETE" })
+export const createDepartment = (body) => apiFetch("/admin/departments", { method: "POST", body: JSON.stringify(body) })
+export const deleteDepartment = (id) => apiFetch(`/admin/departments/${id}`, { method: "DELETE" })
+export const createProgramme = (body) => apiFetch("/academic/programmes", { method: "POST", body: JSON.stringify(body) })
+export const deleteProgramme = (id) => apiFetch(`/academic/programmes/${id}`, { method: "DELETE" })
+
 // ─── Realtime (Server-Sent Events) ───────────────────────
 export const eventStreamUrl = (token = getToken()) => token
   ? `${BASE_URL}/events?token=${encodeURIComponent(token)}`
