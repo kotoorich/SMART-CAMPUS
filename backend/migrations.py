@@ -47,6 +47,9 @@ _ADDED_COLUMNS = [
     ("users", "staff_id", "VARCHAR"),
     ("users", "ghana_card_hash", "VARCHAR"),
     ("users", "ghana_card_last4", "VARCHAR"),
+    ("users", "identity_document_type", "VARCHAR"),
+    ("users", "identity_document_hash", "VARCHAR"),
+    ("users", "identity_document_last4", "VARCHAR"),
     ("users", "registration_photo_ref", "VARCHAR"),
     ("users", "biometric_method", "VARCHAR"),
     ("users", "identity_status", "VARCHAR DEFAULT 'pending'"),
@@ -187,6 +190,8 @@ def add_identity_indexes() -> None:
             conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_staff_id ON users (staff_id)"))
         if "ghana_card_hash" in columns:
             conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_ghana_card_hash ON users (ghana_card_hash)"))
+        if "identity_document_hash" in columns:
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_identity_document_hash ON users (identity_document_hash)"))
     if "attendance_sessions" in tables:
         session_columns = {c["name"] for c in inspect(engine).get_columns("attendance_sessions")}
         if "access_code" in session_columns:
