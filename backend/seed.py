@@ -156,34 +156,28 @@ def _seed_grade_bands(db: Session) -> None:
 
 
 def seed_data():
-    # Demo records are disabled by default. On a production deployment they
-    # require TWO explicit opt-ins, and must only be enabled against a separate
-    # demo database (never an institution's live database).
-    environment = os.getenv("ENVIRONMENT", "development").lower()
-    demo_enabled = os.getenv("SEED_DEMO_DATA", "false").lower() == "true"
-    allow_demo_in_production = (
-        os.getenv("ALLOW_DEMO_SEED_IN_PRODUCTION", "false").lower() == "true"
+    # Render sets RENDER=true automatically. Never seed demo identities or
+    # sample academic records into a hosted/production database.
+    is_production = (
+        os.getenv("RENDER", "").lower() == "true"
+        or os.getenv("ENVIRONMENT", "development").lower() == "production"
     )
-    production_demo_allowed = environment != "production" or allow_demo_in_production
+    demo_enabled = os.getenv("SEED_DEMO_DATA", "false").lower() == "true" and not is_production
     db: Session = SessionLocal()
-    if not demo_enabled or not production_demo_allowed:
+    if not demo_enabled:
         admin_email = os.getenv("BOOTSTRAP_ADMIN_EMAIL", "").strip().lower()
         admin_password = os.getenv("BOOTSTRAP_ADMIN_PASSWORD", "")
         if admin_email and admin_password:
             existing = db.query(User).filter(User.email == admin_email).first()
             if not existing:
-                db.add(User(name=os.getenv("BOOTSTRAP_ADMIN_NAME", "System Administrator"),
+                db.add(User(name="System Administrator",
                     email=admin_email, password=hash_password(admin_password), role="admin",
-                    department=os.getenv("INSTITUTION_NAME", "Institution"), is_approved=True))
+                    department="Institution", is_approved=True))
                 db.commit()
         db.close()
         return
 
-    # The three primary demo identities are configured in backend/.env. In a
-    # development database they are upserted on every startup so the documented
-    # names, roles and passwords cannot drift from the environment file.
-    # In production this block is reachable only after the explicit opt-in above.
-    # Keep this deployment connected to a dedicated, disposable demo database.
+    # Local-only demonstration accounts and sample academic records.
     structure = _seed_structure(db)
 
     admin_email = os.getenv("DEMO_ADMIN_EMAIL", "admin@smartcampus.com").strip().lower()
@@ -196,7 +190,7 @@ def seed_data():
             "email": admin_email,
             "password": os.getenv("DEMO_ADMIN_PASSWORD", "Admin@12345"),
             "role": "admin",
-            "department": os.getenv("INSTITUTION_NAME", "Smart Campus"),
+            "department": "Smart Campus",
         },
         {
             "name": os.getenv("DEMO_FACULTY_NAME", "Daniel Mensah").strip(),
