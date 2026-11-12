@@ -291,7 +291,7 @@ def create_course(body: CourseCreate, user: User = Depends(get_current_user), db
     data = body.model_dump(exclude={"code", "prerequisite_ids", "programme_ids", "batch_names"})
     data["lecturer_id"] = lecturer.id
     data["programme_id"] = programme.id
-    data["institution_name"] = (body.institution_name or lecturer.institution_name or "").strip() or None
+    data["institution_name"] = lecturer.institution_name
     if not data.get("programme_name") and programme:
         data["programme_name"] = programme.name
     if programme:
