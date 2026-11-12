@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, UserCog, CalendarCheck, QrCode, GraduationCap, Settings, BookOpen, CalendarDays, Wallet, Megaphone, History, ClipboardList, Library } from "lucide-react";
+import { LayoutDashboard, Users, UserCog, CalendarCheck, QrCode, GraduationCap, Settings, BookOpen, CalendarDays, Wallet, Megaphone, History, ClipboardList, Library, Network } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -7,6 +7,7 @@ const NAV = {
     { heading: "OVERVIEW", items: [{ to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard }] },
     { heading: "ACADEMICS", items: [
       { to: "/admin/academic", label: "Course oversight", icon: CalendarDays },
+      { to: "/admin/structure", label: "Academic structure", icon: Network },
       { to: "/admin/grading-bands", label: "Grading bands", icon: ClipboardList },
       { to: "/admin/resources", label: "Learning resources", icon: Library },
       { to: "/admin/announcements", label: "Announcements", icon: Megaphone },
@@ -23,6 +24,7 @@ const NAV = {
   faculty: [{ heading: "TEACHING WORKSPACE", items: [
     { to: "/faculty/dashboard", label: "Overview", icon: LayoutDashboard },
     { to: "/faculty/academic", label: "My courses & class lists", icon: BookOpen },
+    { to: "/faculty/programmes", label: "Department programmes", icon: Network },
     { to: "/faculty/attendance", label: "Attendance sessions", icon: CalendarCheck },
     { to: "/faculty/announcements", label: "Announcements", icon: Megaphone },
   ] }],
