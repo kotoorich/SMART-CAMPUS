@@ -1,0 +1,96 @@
+/* Academic management surfaces — neutral Smart Campus palette. */
+.academic-page{max-width:1440px;margin:0 auto;padding:30px clamp(18px,3vw,40px) 60px;color:#16233a}
+.academic-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:24px}
+.academic-heading h1{font-size:clamp(26px,3vw,34px);letter-spacing:-.03em;margin:6px 0;font-weight:800;color:#0d2b57}
+.academic-heading p,.academic-panel p{color:#6b7a94;margin:0;font-size:13px}
+.eyebrow{font-size:11px;letter-spacing:.16em;font-weight:800;color:#8a6d1f}
+.refresh-btn,.course-actions button{display:inline-flex;align-items:center;gap:8px;border:1px solid #dbe3f0;background:#fff;color:#33486b;padding:9px 14px;border-radius:11px;cursor:pointer;font-weight:700;font-size:12px}
+.refresh-btn:hover,.course-actions button:hover{background:#f5f8fd;border-color:#c3d2ea}
+.academic-panel{background:#fff;border:1px solid #e4eaf4;border-radius:18px;padding:24px;margin:18px 0;box-shadow:0 10px 30px rgba(10,42,94,.05)}
+.panel-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.panel-title h2,.join-panel h2{font-size:19px;margin:0 0 6px;color:#0d2b57}
+.panel-title>svg{color:#c8a227}
+.join-panel{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.join-panel form{display:flex;gap:10px;min-width:min(520px,55%)}
+.academic-page input,.academic-page select{background:#fff;border:1px solid #d7e0ee;color:#1e2c46;border-radius:10px;padding:11px 13px;min-width:0;outline:none}
+.academic-page input:focus,.academic-page select:focus{border-color:#123a75;box-shadow:0 0 0 3px rgba(18,58,117,.12)}
+.join-panel input{flex:1}
+.primary-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#123a75;border:0;color:#fff;border-radius:10px;padding:11px 17px;font-weight:700;cursor:pointer;white-space:nowrap}
+.primary-btn:hover{background:#0d2c5c}
+.course-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.course-form .wide{grid-column:span 3}
+.course-form label{display:flex;align-items:center;gap:8px;color:#5b6b86;font-size:13px}
+.course-form label input{accent-color:#123a75}
+.course-form .primary-btn{justify-self:start}
+.toolbar{display:flex;align-items:center;gap:12px;margin:14px 0 18px;flex-wrap:wrap}
+.search-box{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #d7e0ee;border-radius:10px;padding-left:12px;flex:1;min-width:200px;color:#8b98b0}
+.search-box input{border:0;box-shadow:none!important;flex:1;background:transparent}
+.course-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(265px,1fr));gap:15px}
+.course-card{border:1px solid #e4eaf4;background:linear-gradient(150deg,#fff,#f8faff);border-radius:16px;padding:18px;min-width:0}
+.course-top{display:flex;align-items:center;justify-content:space-between}
+.course-mark{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#123a75;color:#fff;font-weight:800}
+.pill-open,.pill-closed,.status-pending,.status-approved,.status-rejected,.status-present,.status-absent{font-size:11px;text-transform:capitalize;border-radius:20px;padding:5px 9px;font-weight:700}
+.pill-open,.status-approved,.status-present{color:#0f6b45;background:#e6f6ee}
+.pill-closed,.status-rejected,.status-absent{color:#b02a3c;background:#fdecef}
+.status-pending{color:#8a6d1f;background:#fdf3d8}
+.course-card h3{font-size:17px;margin:16px 0 5px;color:#16233a}
+.course-code{font-size:12px;color:#123a75!important;font-weight:700}
+.course-desc{font-size:13px;line-height:1.5;margin:12px 0!important;min-height:38px;color:#6b7a94}
+.course-meta{display:grid;gap:8px;border-top:1px solid #e8eef7;padding-top:13px;color:#5b6b86;font-size:12px}
+.course-meta span{display:flex;align-items:center;gap:7px}
+.enrol-status{margin-top:14px;font-size:12px;color:#6b7a94}
+.course-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.course-actions button{font-size:12px;padding:8px 10px}
+.course-actions .danger-link{color:#b02a3c;border-color:#f2d7dc}
+.code-small{font-size:11px;color:#7c8aa3;align-self:center}
+.table-wrap{overflow:auto;border:1px solid #e4eaf4;border-radius:12px}
+table{width:100%;border-collapse:collapse;min-width:760px;text-align:left}
+th,td{padding:13px 14px;border-bottom:1px solid #eef2f9;font-size:12px;white-space:nowrap}
+th{color:#71809a;text-transform:uppercase;letter-spacing:.06em;font-size:10px;background:#f7f9fc}
+td{color:#3d4d68}
+td small{display:block;color:#8290a5;margin-top:4px}
+.row-actions{display:flex;gap:6px}
+.row-actions button{background:#f5f8fd;border:1px solid #dbe3f0;color:#123a75;border-radius:8px;padding:7px;cursor:pointer}
+.row-actions button:last-child{color:#b02a3c}
+.academic-alert{padding:12px 15px;border-radius:10px;margin:12px 0;font-size:13px}
+.academic-alert.error{background:#fdecef;color:#b02a3c}
+.academic-alert.success{background:#e6f6ee;color:#0f6b45}
+.empty-state{grid-column:1/-1;padding:30px;text-align:center;color:#7c8aa3;border:1px dashed #cfdcef;border-radius:12px}
+.attendance-filters input{max-width:190px}
+@media(max-width:760px){
+  .academic-page{padding:20px 14px 40px}
+  .academic-heading,.join-panel{align-items:stretch;flex-direction:column}
+  .join-panel form{min-width:0;width:100%}
+  .course-form{grid-template-columns:1fr}
+  .course-form .wide{grid-column:auto}
+  .toolbar{flex-wrap:wrap}
+  .search-box{flex-basis:100%}
+  .academic-panel{padding:17px}
+  .academic-heading h1{font-size:26px}
+}
+
+/* ── Student course registration (course + batch) ───────────────────────── */
+.enrol-status.enrolled{color:#1c7a4a;font-weight:600}
+.course-register{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center}
+.course-register select{flex:1;min-width:130px;padding:9px 11px;border:1px solid #d8e2f2;border-radius:10px;background:#fff;color:#16233a;font-size:13px}
+.course-register .primary-btn{white-space:nowrap}
+.join-panel{display:flex;flex-direction:column;gap:12px}
+
+.course-schedule-summary { display:grid; gap:4px; margin:10px 0; color:#64748b; font-size:12px; line-height:1.4; }
+
+/* Course-first lecturer workspace */
+.lecturer-course-list-head{margin:8px 0 18px;padding:18px 20px;background:#fff;border:1px solid #e4eaf4;border-radius:16px}
+.lecturer-course-card{display:block;width:100%;text-align:left;cursor:pointer;color:inherit;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+.lecturer-course-card:hover{transform:translateY(-2px);border-color:#9bb8e4;box-shadow:0 12px 28px rgba(10,42,94,.09)}
+.course-state{font-size:11px;font-weight:750;padding:5px 9px;border-radius:30px;background:#edf2f8;color:#53657f}
+.course-state.live{background:#dcfce7;color:#166534}.course-state.upcoming{background:#dbeafe;color:#1d4ed8}.course-state.completed{background:#f1f5f9;color:#64748b}
+.course-open-link{display:inline-flex;align-items:center;gap:7px;color:#174a91;font-size:12px;font-weight:800;margin-top:12px}
+.course-detail-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:12px 0 16px}
+.course-detail-title{display:flex;align-items:center;gap:13px;flex:1;min-width:220px}.course-detail-title h2{margin:0;color:#0d2b57;font-size:22px;font-weight:800}.course-detail-title p{margin:4px 0 0;color:#71809a;font-size:12px}
+.course-detail-tabs{display:flex;gap:5px;overflow:auto;border-bottom:1px solid #dce5f2;margin-bottom:16px;padding-bottom:1px}
+.course-detail-tabs button{white-space:nowrap;padding:11px 14px;border:0;border-bottom:3px solid transparent;background:transparent;color:#64748b;font-size:12px;font-weight:750;cursor:pointer}
+.course-detail-tabs button.active{color:#123a75;border-bottom-color:#123a75}
+.course-detail-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}
+.course-detail-stats>div{padding:16px;border:1px solid #e4eaf4;border-radius:13px;background:#f8faff}.course-detail-stats strong{display:block;font-size:24px;color:#123a75}.course-detail-stats span{display:block;font-size:11px;color:#71809a;margin-top:3px}
+.course-detail-description{margin:12px 0 20px!important;line-height:1.6}
+@media(max-width:650px){.course-detail-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.course-detail-heading{align-items:flex-start}.course-detail-title{order:2;flex-basis:100%}.course-detail-heading>.course-actions{order:3}}
