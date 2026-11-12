@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, Clock3, RefreshCw, ShieldAlert } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock3, GraduationCap, RefreshCw, ShieldAlert } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { verifyLecturerPayment } from "../../services/api";
 
@@ -31,7 +31,7 @@ export default function LecturerPaymentCallback() {
 
   useEffect(() => { verify(); }, [verify]);
 
-  return <main className="auth-screen"><section className="auth-card-wrap"><div className="auth-card text-center">
+  return <main className="auth-screen"><header className="auth-topbar"><button className="brand-lockup" onClick={() => navigate("/")}><span className="brand-mark"><GraduationCap size={22}/></span><span><strong>smartcampus</strong><small>ATTENDANCE MANAGEMENT</small></span></button><button className="signup-back" onClick={() => navigate("/lecturer/signup")}><ArrowLeft size={15}/> Back to registration</button></header><section className="auth-card-wrap"><div className="auth-card text-center">
     <div className="auth-card-heading"><span className="auth-eyebrow">LECTURER REGISTRATION PAYMENT</span><h2>{state === "paid" ? "Payment confirmed." : state === "checking" ? "Checking payment." : state === "pending" ? "Payment not confirmed yet." : "Verification issue."}</h2><p>{message}</p></div>
     {state === "paid" ? <CheckCircle2 size={42} className="mx-auto text-emerald-600"/> : state === "checking" ? <Clock3 size={42} className="mx-auto text-blue-600"/> : <ShieldAlert size={42} className="mx-auto text-amber-600"/>}
     {reference && <p className="text-xs text-slate-500 mt-4 break-all">Reference: {reference}</p>}
