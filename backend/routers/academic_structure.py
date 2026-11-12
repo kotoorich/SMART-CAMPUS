@@ -164,8 +164,8 @@ def create_programme(body: ProgrammeBody, user: User = Depends(get_current_user)
 
 @router.put("/academic/programmes/{programme_id}")
 def update_programme(programme_id: int, body: ProgrammeBody, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if user.role not in ("admin", "faculty"):
-        raise HTTPException(403, "Only lecturers or administrators can manage programmes")
+    if user.role != "faculty":
+        raise HTTPException(403, "Only lecturers can create and manage department programmes")
     row = db.query(Programme).filter(Programme.id == programme_id).first()
     if not row: raise HTTPException(404, "Programme not found")
     department = db.query(Department).filter(Department.id == body.department_id).first()
@@ -182,8 +182,8 @@ def update_programme(programme_id: int, body: ProgrammeBody, user: User = Depend
 
 @router.delete("/academic/programmes/{programme_id}")
 def delete_programme(programme_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if user.role not in ("admin", "faculty"):
-        raise HTTPException(403, "Only lecturers or administrators can manage programmes")
+    if user.role != "faculty":
+        raise HTTPException(403, "Only lecturers can create and manage department programmes")
     row = db.query(Programme).filter(Programme.id == programme_id).first()
     if not row: raise HTTPException(404, "Programme not found")
     if user.role == "faculty" and user.department_id != row.department_id:
