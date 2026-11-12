@@ -223,6 +223,8 @@ def seed_data():
         user.password = hash_password(record["password"])
         user.role = record["role"]
         user.department = record["department"]
+        if record["role"] in ("faculty", "student"):
+            user.institution_name = "University of Cape Coast"
         if record["role"] == "faculty":
             user.department_id = structure["department_id"]
             user.faculty_name = "School of Computing and Information Sciences"
