@@ -262,6 +262,14 @@ def backfill_directory_institutions() -> None:
     if not {"faculties", "departments", "programmes"}.issubset(tables):
         return
     with engine.begin() as conn:
+        if "users" in tables:
+            user_columns = {c["name"] for c in inspect(engine).get_columns("users")}
+            if "institution_name" in user_columns:
+                conn.execute(text(
+                    "UPDATE users SET institution_name = 'University of Cape Coast' "
+                    "WHERE role IN ('student', 'faculty') AND "
+                    "(institution_name IS NULL OR trim(institution_name) = '')"
+                ))
         for table in ("faculties", "departments", "programmes"):
             columns = {c["name"] for c in inspect(engine).get_columns(table)}
             if "institution_name" in columns:
