@@ -19,7 +19,7 @@ from secrets import token_urlsafe, token_hex
 from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -32,7 +32,7 @@ from models import (
     AttendanceSession, AttendanceCorrection, SystemSetting, AcademicSession,
 )
 from realtime import audit, notify, publish_sync
-from storage import resolve_path, save_selfie
+from storage import read_selfie, save_selfie
 from utils import natural_key
 
 router = APIRouter()
@@ -518,9 +518,11 @@ def get_photo(attendance_id: int, user: User = Depends(require_roles("faculty", 
         owner = session.faculty_id if session else a.faculty_id
         if owner != user.id:
             raise HTTPException(403, "You can only view photos for your own classes")
-    path = resolve_path(a.image_ref)
-    media_type = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}.get(path.suffix.lower(), "application/octet-stream")
-    return FileResponse(path, media_type=media_type, filename=f"attendance-{attendance_id}{path.suffix}")
+    image_bytes, media_type = read_selfie(a.image_ref)
+    extension = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}.get(media_type, "")
+    return Response(content=image_bytes, media_type=media_type,
+                    headers={"Content-Disposition": f'inline; filename="attendance-{attendance_id}{extension}"',
+                             "Cache-Control": "private, no-store"})
 
 
 class CorrectionBody(BaseModel):
