@@ -176,7 +176,7 @@ def student_signup(request: StudentSignup, db: Session = Depends(get_db)):
     from storage import save_selfie
     from routers.registration import _clean_identity_document, _ghana_hash
     document_type, document_number = _clean_identity_document(
-        request.identity_document_type, request.identity_document_number
+        request.identity_document_type, request.identity_document_number or request.ghana_card_number
     )
     document_hash = _ghana_hash(document_type + ":" + document_number)
     if db.query(User).filter(User.identity_document_hash == document_hash).first():
