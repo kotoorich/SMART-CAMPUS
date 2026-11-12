@@ -120,6 +120,18 @@ The health endpoint should return `"status": "ok"` and `"database": true`.
 
 Make sure the Render `CORS_ORIGINS` value exactly matches the Vercel website origin, with no trailing slash. If the Vercel domain changes, update the Render value and redeploy the API.
 
+
+## Academic directory and role workflow
+
+1. After the first administrator signs in, open **Academic structure**.
+2. Create the institution's faculties/schools and departments.
+3. Lecturers register against an existing department. An administrator must approve their staff account.
+4. Approved lecturers open **Department programmes** to create programmes within their assigned department.
+5. Students select an existing programme during registration. Faculty and department are filled from that programme; free-text programme names are not used.
+6. Lecturers create their own courses and class schedules. Administrators use **Course oversight** to monitor courses, enrolment and attendance rather than creating teaching courses or booking lecturer classes.
+
+Student and lecturer identity registration accepts either a Ghana Card or passport number. The number is normalised and stored as a keyed hash with only its final four characters retained for display. Registration selfies are evidence for authorised review; automated face recognition/matching is not enabled.
+
 ## 4. App configuration
 
 Use the administrator Settings screens for institution policies and operational settings. Do not create extra Render variables for settings that the app already manages.
@@ -132,7 +144,7 @@ Backend tests use an isolated temporary SQLite database:
 
 ```bash
 cd backend
-python -m pip install pytest
+python -m pip install -r requirements.txt
 python -m pytest -q
 ```
 
