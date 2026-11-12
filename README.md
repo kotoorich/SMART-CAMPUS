@@ -71,9 +71,13 @@ Use a normal **Web Service**. This project does not require a Render Blueprint.
 | Start Command | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
 | Health Check Path | `/health` |
 
-5. If you want registration and attendance selfies to remain available after a Render redeploy or restart, add a **Persistent Disk** to the service (Render → service → Disks) and set its mount path to `/var/data`. The app stores private uploaded photos under that path. Without a persistent disk, the API can still run, but uploaded photos on Render's temporary filesystem may be lost after a restart or deploy.
+5. Create a **private Storage bucket** in the same Supabase project used for the database:
+   - Open Supabase → **Storage** → **New bucket**.
+   - Name it `attendance-selfies` (or use the exact name you will configure below).
+   - Keep **Public bucket** switched **off**. Student registration selfies and attendance photographs are private identity/attendance records.
+   - Do not add public read policies. The backend accesses the bucket with the service-role key and returns images only through authenticated, role-checked API routes.
 6. Create a PostgreSQL project in Supabase. In Supabase, copy the **Session pooler** connection string. Use the URI with the PostgreSQL scheme and port shown by Supabase (normally port `5432` for Session pooler). URL-encode special characters in the database password.
-7. In Render → **Environment**, add only these five variables:
+7. In Render → **Environment**, add these variables:
 
 | Variable | Value |
 |---|---|
@@ -82,8 +86,12 @@ Use a normal **Web Service**. This project does not require a Render Blueprint.
 | `CORS_ORIGINS` | The exact deployed Vercel origin, e.g. `https://your-app.vercel.app` |
 | `BOOTSTRAP_ADMIN_EMAIL` | The email address for your first administrator |
 | `BOOTSTRAP_ADMIN_PASSWORD` | A strong, unique password for that administrator |
+| `SUPABASE_URL` | Your Supabase project URL, e.g. `https://PROJECT_REF.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase **service_role** secret key from Project Settings → API Keys; backend only, never expose in Vercel or commit to Git |
+| `SUPABASE_STORAGE_BUCKET` | `attendance-selfies` (must exactly match the private bucket name created above) |
+| `STORAGE_BACKEND` | `supabase` |
 
-Do not add quotation marks around values. Keep these values private. Never put the database URL or JWT secret in the frontend or GitHub.
+Do not add quotation marks around values. Keep these values private. Never put the database URL, JWT secret or Supabase service-role key in the frontend or GitHub. Do not create a Render Persistent Disk for photos; registration and attendance selfies are stored in the private Supabase Storage bucket. Local development can continue using private local photo storage when Supabase Storage variables are not configured.
 
 Render automatically identifies its hosted environment. You do **not** need to add separate environment variables for the institution name, timezone, attendance radius, GPS accuracy, attendance duration, student approval policy or course registration policy. Those settings are handled by the application. The administrator can configure the supported institution policies from the app's Settings pages.
 
@@ -175,6 +183,10 @@ The backend explicitly uses the installed `psycopg2-binary` driver for PostgreSQ
 **The API starts but the health check says the database is unavailable**
 
 Check that `DATABASE_URL` is the complete Supabase **Session pooler** URI copied from Supabase → Connect. Its structure should be `postgresql://postgres.<PROJECT_REF>:<URL_ENCODED_DB_PASSWORD>@aws-1-eu-west-2.pooler.supabase.com:5432/postgres` (use the exact pooler hostname and port shown by your Supabase project). The hostname must contain only the pooler host — never the database username, password, or `@` characters. URL-encode special characters in the password (for example, `@` as `%40`, `#` as `%23`, and `:` as `%3A`). In Render → Environment, replace the **entire** `DATABASE_URL` value, save, and redeploy. Do not paste the real connection string into chat or GitHub. If the Supabase project uses a different pooler region/host, use the exact host Supabase displays.
+
+**Photo uploads fail or Render reports that Supabase Storage is not configured**
+
+Confirm that `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` and `STORAGE_BACKEND=supabase` are set in Render. Confirm the bucket exists, its name matches exactly, and it is **private**. Use the Supabase `service_role` key (not the anon/publishable key) only in Render's backend environment. After changing variables, redeploy the backend. The API does not expose the bucket publicly; image retrieval remains behind authenticated application routes.
 
 **The browser reports a CORS error**
 
