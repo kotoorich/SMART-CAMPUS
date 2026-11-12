@@ -19,7 +19,7 @@ class StudentSignup(BaseModel):
     index_number: str = Field(min_length=3, max_length=40)
     email: str
     password: str = Field(min_length=8, max_length=128)
-    programme_id: Optional[int] = None
+    programme_id: int = Field(ge=1)
     institution_name: str = Field(min_length=2, max_length=180)
     faculty_name: str = Field(min_length=2, max_length=160)
     department_name: str = Field(min_length=2, max_length=160)
@@ -28,7 +28,9 @@ class StudentSignup(BaseModel):
     level: Optional[int] = Field(default=100, ge=100, le=700)
     interests: Optional[str] = ""
     phone: str = Field(min_length=7, max_length=24)
-    ghana_card_number: str = Field(min_length=10, max_length=24)
+    identity_document_type: str = Field(default="ghana_card", pattern="^(ghana_card|passport)$")
+    identity_document_number: str = Field(min_length=6, max_length=32)
+    ghana_card_number: Optional[str] = None
     registration_selfie: str = Field(min_length=100)
     biometric_method: str = Field(default="selfie", pattern="^(selfie|device_biometric)$")
     consent_biometrics: bool = False
