@@ -148,7 +148,10 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(403, "Administrator approval pending")
     token = create_access_token({"user_id": user.id})
     return {"access_token": token, "role": user.role, "id": user.id,
-            "name": user.name, "index_number": user.index_number}
+            "name": user.name, "index_number": user.index_number,
+            "department_id": user.department_id, "programme_id": user.programme_id,
+            "department": user.department, "programme_name": user.programme_name,
+            "institution_name": user.institution_name}
 
 
 # ── Student Signup ────────────────────────────────────────────────────────────
