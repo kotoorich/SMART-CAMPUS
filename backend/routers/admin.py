@@ -222,7 +222,7 @@ def _faculty_dict(u: User):
             "faculty_name": u.faculty_name, "department": u.department,
             "programme_name": u.programme_name, "designation": u.designation,
             "identity_status": u.identity_status, "has_registration_selfie": bool(u.registration_photo_ref),
-            "ghana_card_last4": u.ghana_card_last4, "is_approved": u.is_approved}
+            "ghana_card_last4": u.ghana_card_last4, "identity_document_type": u.identity_document_type, "identity_document_last4": u.identity_document_last4, "is_approved": u.is_approved}
 
 
 @router.post("/admin/faculty", status_code=201)
