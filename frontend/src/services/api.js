@@ -59,10 +59,13 @@ export const signupStudent = (payload) =>
 
 export const getAcademicDirectory = (admin = false) => apiFetch(admin ? "/admin/academic-directory" : "/public/academic-directory")
 export const createFaculty = (body) => apiFetch("/admin/faculties", { method: "POST", body: JSON.stringify(body) })
+export const updateFaculty = (id, body) => apiFetch(`/admin/faculties/${id}`, { method: "PUT", body: JSON.stringify(body) })
 export const deleteFaculty = (id) => apiFetch(`/admin/faculties/${id}`, { method: "DELETE" })
 export const createDepartment = (body) => apiFetch("/admin/departments", { method: "POST", body: JSON.stringify(body) })
+export const updateDepartment = (id, body) => apiFetch(`/admin/departments/${id}`, { method: "PUT", body: JSON.stringify(body) })
 export const deleteDepartment = (id) => apiFetch(`/admin/departments/${id}`, { method: "DELETE" })
 export const createProgramme = (body) => apiFetch("/academic/programmes", { method: "POST", body: JSON.stringify(body) })
+export const updateProgramme = (id, body) => apiFetch(`/academic/programmes/${id}`, { method: "PUT", body: JSON.stringify(body) })
 export const deleteProgramme = (id) => apiFetch(`/academic/programmes/${id}`, { method: "DELETE" })
 
 // ─── Realtime (Server-Sent Events) ───────────────────────
