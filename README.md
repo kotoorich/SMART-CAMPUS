@@ -362,65 +362,90 @@ Before pushing, check that you are not staging `backend/.env`, `frontend/.env`, 
 3. Choose a project name and a strong database password. Save the password securely.
 4. Select a region suitable for your users and hosting services.
 5. Wait for the database project to finish provisioning.
-6. Open **Project Settings → Database → Connection string**.
-7. Select the connection URI option. Use a connection method supported by your hosting environment; the Supabase pooler is useful when a direct connection is not reachable from the host.
-8. Copy the PostgreSQL connection URI.
-9. Replace any password placeholder with your actual database password. URL-encode special characters in the password before inserting it into the URI.
-10. Keep this URI private. You will enter it into Render as `DATABASE_URL`.
+6. Open **Connect** or **Project Settings → Database → Connection string**.
+7. Select **Session pooler**. This example uses the session-pooler host and port for this Supabase project.
+8. Use this connection URI format:
+
+```text
+postgresql://postgres.glnarqrqwohdrejfqnij:YOUR_URL_ENCODED_DATABASE_PASSWORD@aws-1-eu-west-2.pooler.supabase.com:5432/postgres
+```
+
+9. Replace `YOUR_URL_ENCODED_DATABASE_PASSWORD` with the actual database password, URL-encoding reserved characters. For example, an `@` character in a password must be represented as `%40` inside the URI.
+10. Paste the completed URI privately into Render's `DATABASE_URL` environment variable. Never put the completed URI in this README, GitHub, the frontend or a `VITE_...` variable.
+
+**Security:** if the password you shared in this conversation is your real Supabase database password, rotate/change it in Supabase before using it. Treat a password shared in chat, screenshots or source control as exposed.
 
 The backend uses SQLAlchemy, creates the application's tables and runs its additive migration routine during startup. For the normal first deployment, do not manually paste table-creation SQL into Supabase.
 
 **Do not put the database URI in the frontend, in a public repository, or in a `VITE_...` variable.**
 
-## B3. Deploy the API to Render
+## B3. Create the backend web service manually in Render (no Blueprint)
 
-The repository includes a root-level `render.yaml` Blueprint configuration.
+**Use the Render dashboard for this deployment. Do not choose Blueprint.** Create a normal Web Service and enter the settings yourself.
 
 1. Visit [Render](https://render.com/) and sign in.
-2. Select **New → Blueprint**.
-3. Connect your GitHub account if asked.
-4. Select the `kotoorich/SMART-CAMPUS` repository.
-5. Select the `main` branch.
-6. Render reads `render.yaml` and prepares the `smart-campus-api` web service.
-7. Review the service settings. The Blueprint sets the backend root directory to `backend`, installs `requirements.txt`, starts Uvicorn on Render's assigned port and uses `/health` as its health-check path.
-8. Fill in the values Render requests for variables marked as secrets or not synchronized from the file.
-9. Start the deployment.
-10. Open the service's **Logs** tab and wait for the build and startup to complete.
-11. When the service is live, copy its public URL, for example `https://smart-campus-api.onrender.com`.
+2. Click **New + → Web Service**.
+3. Choose **Build and deploy from a Git repository**.
+4. Connect GitHub if Render requests access.
+5. Select `kotoorich/SMART-CAMPUS` and click **Connect**.
+6. Configure the service:
 
-### Set these Render environment variables
-
-Open the Render service → **Environment** and verify the following:
-
-| Variable | Production value |
+| Render setting | Value |
 |---|---|
+| Name | `smart-campus-api` |
+| Runtime | `Python 3` |
+| Branch | `main` |
+| Region | Choose a region suitable for your users and database |
+| Root Directory | `backend` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
+| Health Check Path | `/health` (Advanced settings, if available) |
+| Auto-Deploy | On, if you want pushes to `main` to deploy automatically |
+
+7. Select your preferred Render plan. Check current pricing and free-instance limitations before choosing.
+8. Open **Advanced** if environment variables can be entered before creation. Otherwise create the service, then open its **Environment** tab.
+9. Add each environment variable in the next table. Do not upload a production `.env` file to GitHub.
+10. Click **Create Web Service** (or **Save Changes**) and wait for the build.
+11. Open **Logs** and check for build, database or startup errors.
+12. When the service is live, copy its public URL, for example `https://smart-campus-api.onrender.com`.
+
+### Add the production environment variables in Render
+
+In the service dashboard, open **Environment → Add Environment Variable** and enter:
+
+| Key | Value |
+|---|---|
+| `PYTHON_VERSION` | `3.12.6` |
 | `ENVIRONMENT` | `production` |
-| `DATABASE_URL` | Your Supabase PostgreSQL connection URI |
-| `JWT_SECRET_KEY` | A long, randomly generated private secret; Render Blueprint can generate this |
-| `CORS_ORIGINS` | Your exact Vercel origin, e.g. `https://your-project.vercel.app` |
-| `SEED_DEMO_DATA` | `false` |
 | `APP_TIMEZONE` | `Africa/Accra` |
-| `BOOTSTRAP_ADMIN_NAME` | Name of your first administrator |
-| `BOOTSTRAP_ADMIN_EMAIL` | Email address for your first administrator |
-| `BOOTSTRAP_ADMIN_PASSWORD` | Strong, unique password for your first administrator |
-| `ATTENDANCE_GPS_RADIUS_METERS` | `50` (or the institution's approved radius) |
-| `ATTENDANCE_GPS_ACCURACY_CEILING` | `500` (metres; adjust only after device testing) |
-| `ATTENDANCE_GPS_SESSION_ACCURACY_CEILING` | `500` |
+| `INSTITUTION_NAME` | `Smart Campus` |
+| `SEED_DEMO_DATA` | `false` |
+| `DATABASE_URL` | Your completed Supabase Session Pooler URI from section B2 |
+| `JWT_SECRET_KEY` | A newly generated long, random private signing secret |
+| `CORS_ORIGINS` | Your exact Vercel origin, e.g. `https://your-project.vercel.app` |
+| `BOOTSTRAP_ADMIN_NAME` | Name of the first production administrator |
+| `BOOTSTRAP_ADMIN_EMAIL` | Email address of the first production administrator |
+| `BOOTSTRAP_ADMIN_PASSWORD` | A new, strong, unique administrator password |
+| `ATTENDANCE_GPS_RADIUS_METERS` | `50` (metres; confirm institutional policy) |
+| `ATTENDANCE_GPS_ACCURACY_CEILING` | `500` (metres; validate with real devices) |
+| `ATTENDANCE_GPS_SESSION_ACCURACY_CEILING` | `500` (metres; validate with real devices) |
 
-The Blueprint already defines several non-secret settings and generates a JWT secret. Confirm the final values in the Render dashboard. Add the bootstrap administrator values there if they are not already present.
+**Important:**
+- `DATABASE_URL` must be the full PostgreSQL URI from Supabase, not a SQLite path.
+- Do not add quotation marks around values in the Render dashboard.
+- Keep `SEED_DEMO_DATA=false`; production must not be populated with local demo accounts.
+- The backend reads the three `BOOTSTRAP_ADMIN_...` variables and creates the administrator only if that email does not already exist.
+- Generate a unique JWT secret. Do not reuse your database password or administrator password.
+- Save environment changes and allow Render to restart/redeploy the service.
 
-Do not set `SEED_DEMO_DATA=true` in production. The application deliberately prevents demo data seeding in a production environment.
+### Verify the Render API before deploying the frontend
 
-### Verify the backend before deploying the frontend
-
-Replace the sample hostname with your actual Render URL and open:
-
+Open these URLs using your actual Render hostname:
 - `https://YOUR-RENDER-SERVICE.onrender.com/`
 - `https://YOUR-RENDER-SERVICE.onrender.com/health`
 - `https://YOUR-RENDER-SERVICE.onrender.com/docs`
 
-The health endpoint should report a healthy database connection. If it reports a degraded database status, fix the database connection before continuing.
-
+The health endpoint should report a healthy database connection. If it reports `"database": false` or `"status": "degraded"`, inspect the Render logs and check the Supabase URI, password encoding, host, port and database password.
 ## B4. Deploy the frontend to Vercel
 
 1. Visit [Vercel](https://vercel.com/) and sign in.
