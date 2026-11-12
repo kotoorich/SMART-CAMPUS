@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 MAX_BYTES = 5 * 1024 * 1024
 _EXT_BY_FORMAT = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}
-_KEY_RE = re.compile(r"^[A-Za-z0-9]{8,64}(?:\\.(?:jpg|png|webp))?$")
+_KEY_RE = re.compile(r"^[A-Za-z0-9]{8,64}(?:\.(?:jpg|png|webp))?$")
 
 
 def _storage_config():
