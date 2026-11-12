@@ -146,7 +146,7 @@ def test_student_signup_with_institution_profile():
         "ghana_card_number": "GHA-987654321-0", "registration_selfie": _selfie_b64(),
         "consent_biometrics": True, "institution_name": "Example University",
         "faculty_name": "School of Technology", "department_name": "Computing",
-        "programme_name": "BSc Computer Science", "academic_year": "2026/2027",
+        "programme_name": "BSc Computer Science", "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"], "academic_year": "2026/2027",
     })
     assert res.status_code == 409
 
@@ -156,6 +156,7 @@ def test_course_timetable_integration(admin, faculty, student):
     lecturer_id = _lecturer_id(admin)
     res = client.post("/academic/courses", headers=faculty, json={
         "title": "Integration Test Course", "code": "ITC101", "lecturer_id": lecturer_id,
+        "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"],
         "level": "100", "semester": "First Semester", "credit_hours": 3,
         "is_published": True, "registration_open": True, "enrolment_requires_approval": False,
         "batch_names": ["Batch A", "Batch B"],
@@ -219,6 +220,7 @@ def test_lecturer_can_edit_own_course_details(admin, faculty):
     lecturer_id = _lecturer_id(admin)
     mine = client.post("/academic/courses", headers=faculty, json={
         "title": "Lecturer Editable Course", "code": "LEC101", "lecturer_id": lecturer_id,
+        "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"],
         "level": "100", "semester": "First Semester", "academic_year": "2025/2026",
         "programme_name": "BSc. Computer Science with Artificial Intelligence & Data Science",
         "batch_names": ["Batch LEC"]}).json()
@@ -238,6 +240,7 @@ def test_lecturer_can_edit_own_course_details(admin, faculty):
     }).json()
     other = client.post("/academic/courses", headers=faculty, json={
         "title": "Not Mine", "code": "NM101", "lecturer_id": other_faculty["id"],
+        "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"],
         "level": "100", "semester": "First Semester", "academic_year": "2025/2026",
         "programme_name": "BSc. Information Technology"}).json()
     assert client.patch(f"/academic/courses/{other['id']}", headers=faculty,
@@ -256,6 +259,7 @@ def test_create_course_with_programme_id_derives_department(admin, faculty):
     pid = client.get("/academic/courses", headers=admin).json()[0]["programme_ids"][0]
     res = client.post("/academic/courses", headers=faculty, json={
         "title": "Programme Scoped Course", "code": "PROG501", "lecturer_id": lecturer_id,
+        "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"],
         "level": "100", "semester": "First Semester", "academic_year": "2025/2026",
         "programme_id": pid, "batch_names": ["Batch PROG"]})
     assert res.status_code == 201, res.text
@@ -300,6 +304,7 @@ def test_enrol_by_course_and_batch(admin, faculty, student):
     lecturer_id = _lecturer_id(admin)
     res = client.post("/academic/courses", headers=faculty, json={
         "title": "Batch Required Course", "code": "BRC101", "lecturer_id": lecturer_id,
+        "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"],
         "credit_hours": 1, "is_published": True, "registration_open": True,
         "batch_names": ["Only Batch"],
     })
@@ -342,6 +347,7 @@ def test_enrolment_credit_cap(admin, faculty, student):
     lecturer_id = _lecturer_id(admin)
     res = client.post("/academic/courses", headers=faculty, json={
         "title": "Cap Test Course", "code": "CAP101", "lecturer_id": lecturer_id,
+        "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"],
         "credit_hours": 3, "is_published": True, "registration_open": True,
     })
     course_id = res.json()["id"]
@@ -379,6 +385,7 @@ def test_timetable_update_and_delete(admin, faculty):
     lecturer_id = _lecturer_id(admin)
     res = client.post("/academic/courses", headers=faculty, json={
         "title": "Edit Test Course", "code": "EDT101", "lecturer_id": lecturer_id,
+        "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"],
         "credit_hours": 2, "is_published": True, "registration_open": True,
     })
     course_id = res.json()["id"]
@@ -403,6 +410,7 @@ def _make_today_course(admin, code, period):
     weekday = date.today().weekday()
     res = client.post("/academic/courses", headers=faculty, json={
         "title": f"{code} Course", "code": code, "lecturer_id": lecturer_id,
+        "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"],
         "credit_hours": 1, "is_published": True, "registration_open": True,
         "enrolment_requires_approval": False, "batch_names": ["Batch 1"],
     })
@@ -424,6 +432,7 @@ def test_attendance_can_open_without_timetable_and_outside_class_time(admin, fac
     lecturer_id = _lecturer_id(admin)
     res = client.post("/academic/courses", headers=faculty, json={
         "title": "Flexible Attendance Course", "code": "FLEX901", "lecturer_id": lecturer_id,
+        "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"],
         "credit_hours": 1, "is_published": True, "registration_open": True,
     })
     assert res.status_code == 201, res.text
@@ -781,6 +790,7 @@ def test_session_opens_with_coarse_laptop_gps_fix(admin, faculty):
     lecturer_id = _lecturer_id(admin)
     course = client.post("/academic/courses", headers=faculty, json={
         "title": "Coarse GPS Course", "code": "GPS901", "lecturer_id": lecturer_id,
+        "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"],
         "credit_hours": 1, "is_published": True, "registration_open": True,
     }).json()
     # A coarse but usable fix (well inside the session ceiling) must open.
