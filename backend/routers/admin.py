@@ -85,7 +85,8 @@ def _student_dict(u: User, db: Session = None):
             "programme_id": u.programme_id, "programme_name": programme.name if programme else u.programme_name,
             "academic_year": u.academic_year, "level": u.level, "interests": u.interests,
             "identity_status": u.identity_status, "has_registration_selfie": bool(u.registration_photo_ref),
-            "ghana_card_last4": u.ghana_card_last4, "identity_document_type": u.identity_document_type,\n            "identity_document_last4": u.identity_document_last4, "is_approved": u.is_approved}
+            "ghana_card_last4": u.ghana_card_last4, "identity_document_type": u.identity_document_type,
+            "identity_document_last4": u.identity_document_last4, "is_approved": u.is_approved}
 
 
 def _resolve_student_scope(db: Session, programme_id: Optional[int]):
