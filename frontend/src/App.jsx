@@ -15,6 +15,7 @@ import StudentAnnouncements from "./pages/student/StudentAnnouncements"
 import AdminResources from "./pages/admin/AdminResources"
 import Settings from "./pages/Settings"
 import AcademicHub from "./pages/AcademicHub"
+import AcademicStructure from "./pages/admin/AcademicStructure"
 import RegistrationSettings from "./pages/admin/RegistrationSettings"
 import Announcements from "./pages/Announcements"
 import AuditLog from "./pages/AuditLog"
@@ -43,7 +44,7 @@ function AppRoutes() {
       <Route path="/admin/students" element={<ProtectedRoute role="admin"><AdminResources type="students" /></ProtectedRoute>} />
       <Route path="/admin/faculty" element={<ProtectedRoute role="admin"><AdminResources type="faculty" /></ProtectedRoute>} />
       <Route path="/admin/courses" element={<Navigate to="/admin/academic" replace />} />
-      <Route path="/admin/structure" element={<Navigate to="/admin/dashboard" replace />} />
+      <Route path="/admin/structure" element={<ProtectedRoute role="admin"><AcademicStructure mode="admin" /></ProtectedRoute>} />
       <Route path="/admin/registration-settings" element={<ProtectedRoute role="admin"><RegistrationSettings /></ProtectedRoute>} />
       <Route path="/admin/announcements" element={<ProtectedRoute role="admin"><Announcements /></ProtectedRoute>} />
       <Route path="/admin/audit-log" element={<ProtectedRoute role="admin"><AuditLog /></ProtectedRoute>} />
@@ -59,6 +60,7 @@ function AppRoutes() {
       <Route path="/faculty/dashboard"  element={<ProtectedRoute role="faculty"><FacultyDashboard /></ProtectedRoute>} />
       <Route path="/faculty/attendance" element={<ProtectedRoute role="faculty"><FacultyAttendance /></ProtectedRoute>} />
       <Route path="/faculty/academic" element={<ProtectedRoute role="faculty"><AcademicHub mode="lecturer" /></ProtectedRoute>} />
+      <Route path="/faculty/programmes" element={<ProtectedRoute role="faculty"><AcademicStructure mode="lecturer" /></ProtectedRoute>} />
       <Route path="/faculty/announcements" element={<ProtectedRoute role="faculty"><Announcements /></ProtectedRoute>} />
       <Route path="/faculty/curriculum" element={<Navigate to="/faculty/dashboard" replace />} />
 
