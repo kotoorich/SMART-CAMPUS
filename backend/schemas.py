@@ -10,11 +10,7 @@ class LoginRequest(BaseModel):
 
 
 class StudentSignup(BaseModel):
-    """Student self-registration.
-
-    Students enter their own institution and academic profile. Programme
-    details are self-reported and do not depend on a central institution setup.
-    """
+    """Student self-registration linked to the managed academic directory."""
     name: str = Field(min_length=2, max_length=120)
     index_number: str = Field(min_length=3, max_length=40)
     email: str
