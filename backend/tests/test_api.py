@@ -147,6 +147,27 @@ def test_academic_directory_and_role_boundaries(admin, faculty, student):
     assert data["faculties"] and data["departments"] and data["programmes"]
     lecturer = client.post("/login", json={"email": FACULTY[0], "password": FACULTY[1], "selected_role": "faculty"}).json()
     own_department = lecturer["department_id"]
+    institution = lecturer["institution_name"]
+    own_directory = client.get("/academic/academic-directory", headers=faculty)
+    assert own_directory.status_code == 200
+    assert all(x["institution_name"] == institution for x in own_directory.json()["faculties"])
+    new_faculty = client.post("/academic/faculties", headers=faculty, json={
+        "name": "CI Institution Faculty", "code": "CI-INS-FAC",
+    })
+    assert new_faculty.status_code == 201, new_faculty.text
+    new_department = client.post("/academic/departments", headers=faculty, json={
+        "name": "CI Institution Department", "code": "CI-INS-DEPT",
+        "faculty_id": new_faculty.json()["id"],
+    })
+    assert new_department.status_code == 201, new_department.text
+    new_programme = client.post("/academic/programmes", headers=faculty, json={
+        "name": "CI Institution Programme", "code": "CI-INS-PROG",
+        "department_id": new_department.json()["id"],
+    })
+    assert new_programme.status_code == 201, new_programme.text
+    assert client.post("/academic/faculties", headers=admin, json={
+        "name": "Admin Must Not Create", "code": "CI-ADMIN-FAC",
+    }).status_code == 403
     assert own_department
     created = client.post("/academic/programmes", headers=faculty, json={
         "name": "CI Lecturer Programme", "code": "CI-PROG-1",
@@ -162,10 +183,11 @@ def test_academic_directory_and_role_boundaries(admin, faculty, student):
         "department_id": own_department,
     }).status_code == 403
     other_department = next(d["id"] for d in data["departments"] if d["id"] != own_department)
+    # Lecturers can create programmes in any department belonging to their own institution.
     assert client.post("/academic/programmes", headers=faculty, json={
-        "name": "Outside Department", "code": "CI-OUTSIDE-PROG",
+        "name": "Same Institution Department", "code": "CI-OUTSIDE-PROG",
         "department_id": other_department,
-    }).status_code == 403
+    }).status_code == 201
     assert client.post("/academic/courses", headers=admin, json={
         "title": "Admin Course", "code": "CI-ADMIN-COURSE", "programme_id": data["programmes"][0]["id"],
     }).status_code == 403
@@ -176,7 +198,7 @@ def test_student_signup_with_institution_profile():
         "name": "New Applicant", "index_number": "2024999", "email": "applicant@example.com",
         "password": "StrongPass@1", "phone": "+233240000999",
         "ghana_card_number": "GHA-123456789-0", "registration_selfie": _selfie_b64(),
-        "consent_biometrics": True, "institution_name": "Example University",
+        "consent_biometrics": True, "institution_name": "University of Cape Coast",
         "faculty_name": "School of Technology", "department_name": "Computing",
         "programme_name": "BSc Computer Science", "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"], "academic_year": "2026/2027",
         "level": 100, "interests": "ai",
@@ -187,7 +209,7 @@ def test_student_signup_with_institution_profile():
         "name": "Dup", "index_number": "2024999", "email": "other@example.com",
         "password": "StrongPass@1", "phone": "+233240000998",
         "ghana_card_number": "GHA-987654321-0", "registration_selfie": _selfie_b64(),
-        "consent_biometrics": True, "institution_name": "Example University",
+        "consent_biometrics": True, "institution_name": "University of Cape Coast",
         "faculty_name": "School of Technology", "department_name": "Computing",
         "programme_name": "BSc Computer Science", "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"], "academic_year": "2026/2027",
     })
@@ -203,7 +225,7 @@ def test_student_passport_registration_uses_hashed_identity_document():
         "password": "StrongPass@1", "phone": "+233240000997",
         "identity_document_type": "passport", "identity_document_number": "P1234567",
         "registration_selfie": _selfie_b64(), "consent_biometrics": True,
-        "institution_name": "Example University", "faculty_name": faculty["name"],
+        "institution_name": "University of Cape Coast", "faculty_name": faculty["name"],
         "department_name": department["name"], "programme_name": programme["name"],
         "programme_id": programme["id"], "academic_year": "2026/2027", "level": 100,
     })
@@ -305,7 +327,7 @@ def test_lecturer_can_edit_own_course_details(admin, faculty):
     # A lecturer must not be able to edit another lecturer's course.
     other_faculty = client.post("/admin/faculty", headers=admin, json={
         "name": "Other Lecturer", "email": "other.lecturer@smartcampus.com",
-        "password": "Lecturer@12345", "staff_id": "STF-OTHER", "institution_name": "Smart Campus",
+        "password": "Lecturer@12345", "staff_id": "STF-OTHER", "institution_name": "University of Cape Coast",
     }).json()
     other_credentials = ("other.lecturer@smartcampus.com", "Lecturer@12345", "faculty")
     other = client.post("/academic/courses", headers=auth(other_credentials), json={
@@ -329,7 +351,7 @@ def test_room_booking_conflict_between_lecturers(admin, faculty):
     second_lecturer = client.post("/admin/faculty", headers=admin, json={
         "name": "Room Conflict Lecturer", "email": "room.conflict@example.com",
         "password": "Lecturer@12345", "staff_id": "ROOM-LECT-1",
-        "institution_name": "Smart Campus",
+        "institution_name": "University of Cape Coast",
     })
     assert second_lecturer.status_code == 201, second_lecturer.text
     second_auth = auth(("room.conflict@example.com", "Lecturer@12345", "faculty"))

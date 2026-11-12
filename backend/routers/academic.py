@@ -278,20 +278,20 @@ def create_course(body: CourseCreate, user: User = Depends(get_current_user), db
     if not lecturer:
         raise HTTPException(404, "Lecturer not found")
     code = body.code.strip().upper()
-    if db.query(Course).filter(Course.code == code).first():
-        raise HTTPException(409, "Course code already exists")
+    if db.query(Course).filter(Course.code == code, Course.institution_name == lecturer.institution_name).first():
+        raise HTTPException(409, "Course code already exists in your institution")
     requested_programme_id = body.programme_id or (body.programme_ids[0] if body.programme_ids else None)
     if not requested_programme_id:
         raise HTTPException(422, "Select an eligible programme from the academic directory")
     programme = db.query(Programme).filter(Programme.id == requested_programme_id).first()
     if not programme:
         raise HTTPException(404, "Programme not found")
-    if user.role == "faculty" and user.department_id and programme.department_id != user.department_id:
-        raise HTTPException(403, "You can only create courses for programmes in your assigned department")
+    if (programme.institution_name or "").strip().casefold() != (lecturer.institution_name or "").strip().casefold():
+        raise HTTPException(403, "You can only create courses for programmes in your institution")
     data = body.model_dump(exclude={"code", "prerequisite_ids", "programme_ids", "batch_names"})
     data["lecturer_id"] = lecturer.id
     data["programme_id"] = programme.id
-    data["institution_name"] = (body.institution_name or lecturer.institution_name or "").strip() or None
+    data["institution_name"] = lecturer.institution_name
     if not data.get("programme_name") and programme:
         data["programme_name"] = programme.name
     if programme:
@@ -309,9 +309,9 @@ def create_course(body: CourseCreate, user: User = Depends(get_current_user), db
     if len(linked_programmes) != len(programme_ids):
         db.rollback()
         raise HTTPException(422, "One or more selected programmes do not exist")
-    if user.role == "faculty" and user.department_id and any(p.department_id != user.department_id for p in linked_programmes):
+    if any((p.institution_name or "").strip().casefold() != (lecturer.institution_name or "").strip().casefold() for p in linked_programmes):
         db.rollback()
-        raise HTTPException(403, "You can only offer courses to programmes in your assigned department")
+        raise HTTPException(403, "A course cannot be linked to programmes from another institution")
     _set_course_programmes(db, c, programme_ids)
     for name in body.batch_names:
         clean = (name or "").strip()
@@ -510,8 +510,8 @@ def update_course(course_id: int, body: CourseUpdate, user: User = Depends(get_c
             selected = db.query(Programme).filter(Programme.id == updates["programme_id"]).first()
             if not selected:
                 raise HTTPException(404, "Programme not found")
-            if user.department_id and selected.department_id != user.department_id:
-                raise HTTPException(403, "You can only assign courses to programmes in your department")
+            if (selected.institution_name or "").strip().casefold() != (user.institution_name or "").strip().casefold():
+                raise HTTPException(403, "You can only assign courses to programmes in your institution")
             c.programme_id = selected.id
             c.programme_name = selected.name
             c.department_id = selected.department_id

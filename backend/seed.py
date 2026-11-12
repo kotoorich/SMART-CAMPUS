@@ -132,7 +132,7 @@ def _seed_demo_courses(db: Session, structure: dict, faculty_id: int) -> dict:
         if not course:
             course = Course(
                 code=code, title=title, credit_hours=credits, level=level, semester=semester,
-                academic_year=structure["academic_year"], department="CSE(AI&DS)",
+                academic_year=structure["academic_year"], institution_name="University of Cape Coast", department="CSE(AI&DS)",
                 department_id=structure["department_id"], programme_id=structure["programme_id"],
                 lecturer_id=faculty_id, registration_code=token_urlsafe(9),
                 registration_code_expires_at=datetime.utcnow() + timedelta(days=365),
@@ -223,6 +223,8 @@ def seed_data():
         user.password = hash_password(record["password"])
         user.role = record["role"]
         user.department = record["department"]
+        if record["role"] in ("faculty", "student"):
+            user.institution_name = "University of Cape Coast"
         if record["role"] == "faculty":
             user.department_id = structure["department_id"]
             user.faculty_name = "School of Computing and Information Sciences"

@@ -16,7 +16,7 @@ import {
   listMaterials, createMaterial, deleteMaterial, updateMaterial, listAssessments, createAssessment, deleteAssessment,
   updateAssessment, enterMarks, releaseAssessment, getAssessmentResults,
   updateMyCourseSchedule, deleteMyCourseSchedule, changeBatch, getMyResults,
-  listBatches, createBatch, updateBatch, deleteBatch, getAcademicDirectory,
+  listBatches, createBatch, updateBatch, deleteBatch, getMyAcademicDirectory,
 } from "../services/api"
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -471,7 +471,7 @@ function LecturerWorkspace({ fb }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => { loadCourses(); getAcademicDirectory().then(setDirectory).catch(e => fb.setError(e.message || "Academic programmes could not be loaded.")) }, [loadCourses])
+  useEffect(() => { loadCourses(); getMyAcademicDirectory().then(setDirectory).catch(e => fb.setError(e.message || "Academic programmes could not be loaded.")) }, [loadCourses])
   useRealtime((event) => {
     if (["enrolments", "courses", "timetable", "attendance", "materials"].includes(event.type)) {
       loadCourses()

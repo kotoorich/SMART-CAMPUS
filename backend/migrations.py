@@ -34,6 +34,9 @@ _ADDED_COLUMNS = [
     ("qr_sessions", "token", "VARCHAR"),
     ("qr_sessions", "course_id", "INTEGER"),
     ("users", "section", "VARCHAR"),
+    ("faculties", "institution_name", "VARCHAR DEFAULT 'University of Cape Coast'"),
+    ("departments", "institution_name", "VARCHAR DEFAULT 'University of Cape Coast'"),
+    ("programmes", "institution_name", "VARCHAR DEFAULT 'University of Cape Coast'"),
     ("users", "index_number", "VARCHAR"),
     ("users", "department_id", "INTEGER"),
     ("users", "programme_id", "INTEGER"),
@@ -243,8 +246,68 @@ def backfill_academic_directory_links() -> None:
 def run_migrations() -> None:
     """Apply every migration in order. Safe to call on every start-up."""
     add_missing_columns()
+    backfill_directory_institutions()
+    relax_global_directory_uniqueness()
     backfill_academic_directory_links()
     add_identity_indexes()
     retire_face_column()
     rebuild_attendance_for_sessions()
     backfill_registration_code_expiry()
+
+
+
+def backfill_directory_institutions() -> None:
+    """Keep legacy academic records visible while assigning them an institution."""
+    tables = set(inspect(engine).get_table_names())
+    if not {"faculties", "departments", "programmes"}.issubset(tables):
+        return
+    with engine.begin() as conn:
+        if "courses" in tables:
+            course_columns = {c["name"] for c in inspect(engine).get_columns("courses")}
+            if "institution_name" in course_columns:
+                conn.execute(text(
+                    "UPDATE courses SET institution_name = 'University of Cape Coast' "
+                    "WHERE institution_name IS NULL OR trim(institution_name) = ''"
+                ))
+        if "users" in tables:
+            user_columns = {c["name"] for c in inspect(engine).get_columns("users")}
+            if "institution_name" in user_columns:
+                conn.execute(text(
+                    "UPDATE users SET institution_name = 'University of Cape Coast' "
+                    "WHERE role IN ('student', 'faculty') AND "
+                    "(institution_name IS NULL OR trim(institution_name) = '')"
+                ))
+        for table in ("faculties", "departments", "programmes"):
+            columns = {c["name"] for c in inspect(engine).get_columns(table)}
+            if "institution_name" in columns:
+                conn.execute(text(
+                    "UPDATE " + table + " SET institution_name = 'University of Cape Coast' "
+                    "WHERE institution_name IS NULL OR trim(institution_name) = ''"
+                ))
+
+
+
+def relax_global_directory_uniqueness() -> None:
+    """Replace global directory-code uniqueness with institution-scoped indexes."""
+    tables = set(inspect(engine).get_table_names())
+    with engine.begin() as conn:
+        for table, column in (
+            ("faculties", "name"), ("faculties", "code"),
+            ("departments", "code"), ("programmes", "code"), ("courses", "code"),
+        ):
+            if table not in tables:
+                continue
+            for index in inspect(engine).get_indexes(table):
+                if index.get("unique") and index.get("column_names") == [column]:
+                    conn.execute(text("DROP INDEX IF EXISTS " + index["name"]))
+        index_sql = (
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_faculties_institution_name ON faculties (institution_name, name)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_faculties_institution_code ON faculties (institution_name, code)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_departments_institution_code ON departments (institution_name, code)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_programmes_institution_code ON programmes (institution_name, code)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_courses_institution_code ON courses (institution_name, code)",
+        )
+        for statement in index_sql:
+            table = statement.split(" ON ", 1)[1].split(" ", 1)[0]
+            if table in tables:
+                conn.execute(text(statement))
