@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, RefreshCw, Building2, Layers3, GraduationCap, Trash2, Pencil, Eye } from "lucide-react";
+import { Plus, RefreshCw, Building2, Layers3, GraduationCap, Trash2, Pencil } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import { useAuth } from "../../context/AuthContext";
 import { getAcademicDirectory, getMyAcademicDirectory, createFaculty, createDepartment, createProgramme, updateFaculty, updateDepartment, updateProgramme, deleteFaculty, deleteDepartment, deleteProgramme, adminDeleteFaculty, adminDeleteDepartment, adminDeleteProgramme } from "../../services/api";
