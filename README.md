@@ -1,0 +1,1 @@
+Smart Campus source repository. See the full deployment and setup guide in the project README.
