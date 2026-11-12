@@ -2,6 +2,7 @@ from sqlalchemy import create_engine
 from pathlib import Path
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.engine import make_url
 import os
 
 # ── Use Supabase PostgreSQL on production, SQLite locally ─────────────────────
@@ -19,6 +20,28 @@ if _IS_HOSTED and not DATABASE_URL:
     raise RuntimeError("DATABASE_URL must point to the production PostgreSQL database.")
 if _IS_HOSTED and not DATABASE_URL.startswith(("postgres://", "postgresql://")):
     raise RuntimeError("Hosted Smart Campus deployments require a PostgreSQL DATABASE_URL.")
+
+# Parse and validate the URL before creating the engine. A malformed Render
+# value can otherwise reach psycopg2 and produce a confusing DNS error when
+# part of a username/password has accidentally been pasted into the hostname.
+try:
+    _parsed_database_url = make_url(DATABASE_URL)
+except Exception as exc:
+    raise RuntimeError(
+        "DATABASE_URL is not a valid database URL. In Render, replace it with "
+        "the complete Supabase Session pooler URI; do not include quotes."
+    ) from exc
+
+if _parsed_database_url.drivername.startswith("postgresql"):
+    _host = _parsed_database_url.host or ""
+    if not _host or any(char in _host for char in ("@", "/", "\\\\", "?", "#")) or any(char.isspace() for char in _host):
+        raise RuntimeError(
+            "DATABASE_URL has an invalid PostgreSQL hostname. The hostname must "
+            "contain only the Supabase pooler host (for example, "
+            "aws-1-eu-west-2.pooler.supabase.com). In Render, replace the entire "
+            "DATABASE_URL with the Session pooler URI copied from Supabase. "
+            "URL-encode special characters in the database password."
+        )
 
 # Render and Supabase both hand out "postgres://" URLs, which SQLAlchemy 2.0 no
 # longer accepts. Normalise the scheme before the engine is created.
