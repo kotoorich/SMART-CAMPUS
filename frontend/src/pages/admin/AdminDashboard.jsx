@@ -62,7 +62,7 @@ export default function AdminDashboard() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-3 gap-6 mb-8 mt-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8 mt-6">
 
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <p className="text-gray-500 text-sm">Total Students</p>
@@ -90,8 +90,8 @@ export default function AdminDashboard() {
         {pending.length === 0 ? (
           <p className="text-gray-500">No pending students.</p>
         ) : (
-          <div className="bg-white rounded-2xl shadow-md p-6">
-            <table className="w-full text-left">
+          <div className="bg-white rounded-2xl shadow-md p-3 sm:p-6 overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left">
               <thead>
                 <tr className="border-b text-gray-500 text-sm">
                   <th className="py-2 pr-6">Name</th>
