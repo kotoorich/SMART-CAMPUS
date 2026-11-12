@@ -199,9 +199,51 @@ def add_identity_indexes() -> None:
                 conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_sessions_access_code ON attendance_sessions (access_code)"))
 
 
+
+def backfill_academic_directory_links() -> None:
+    """Link legacy free-text academic profiles to managed directory records."""
+    tables = set(inspect(engine).get_table_names())
+    if not {"users", "departments", "programmes", "courses"}.issubset(tables):
+        return
+    with engine.begin() as conn:
+        conn.execute(text(
+            "UPDATE users SET department_id = ("
+            " SELECT d.id FROM departments d"
+            " WHERE lower(trim(d.name)) = lower(trim(users.department)) LIMIT 1"
+            ") WHERE department_id IS NULL AND department IS NOT NULL"
+        ))
+        conn.execute(text(
+            "UPDATE users SET programme_id = ("
+            " SELECT p.id FROM programmes p"
+            " WHERE lower(trim(p.name)) = lower(trim(users.programme_name))"
+            " AND (p.department_id = users.department_id OR users.department_id IS NULL)"
+            " LIMIT 1"
+            ") WHERE programme_id IS NULL AND programme_name IS NOT NULL"
+        ))
+        conn.execute(text(
+            "UPDATE users SET department_id = ("
+            " SELECT p.department_id FROM programmes p WHERE p.id = users.programme_id"
+            ") WHERE department_id IS NULL AND programme_id IS NOT NULL"
+        ))
+        conn.execute(text(
+            "UPDATE courses SET programme_id = ("
+            " SELECT p.id FROM programmes p"
+            " WHERE lower(trim(p.name)) = lower(trim(courses.programme_name))"
+            " AND (p.department_id = courses.department_id OR courses.department_id IS NULL)"
+            " LIMIT 1"
+            ") WHERE programme_id IS NULL AND programme_name IS NOT NULL"
+        ))
+        conn.execute(text(
+            "UPDATE courses SET department_id = ("
+            " SELECT p.department_id FROM programmes p WHERE p.id = courses.programme_id"
+            ") WHERE department_id IS NULL AND programme_id IS NOT NULL"
+        ))
+
+
 def run_migrations() -> None:
     """Apply every migration in order. Safe to call on every start-up."""
     add_missing_columns()
+    backfill_academic_directory_links()
     add_identity_indexes()
     retire_face_column()
     rebuild_attendance_for_sessions()
