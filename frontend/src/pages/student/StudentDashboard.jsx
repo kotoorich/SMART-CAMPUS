@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import MainLayout from "../../layouts/MainLayout"
 import { useAuth } from "../../context/AuthContext"
-import { getAttendancePercentage, getStudentTimetable } from "../../services/api"
+import { getAttendancePercentage, getStudentTimetable, getStudentCourses } from "../../services/api"
 
 export default function StudentDashboard() {
   const { user } = useAuth()
@@ -12,6 +12,8 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState("")
 
+  const [myCourses, setMyCourses] = useState([])
+  const [myCoursesError, setMyCoursesError] = useState("")
   const [classes,       setClasses]       = useState([])
   const [classesError, setClassesError]   = useState("")
   const [now,          setNow]           = useState(new Date())
@@ -24,6 +26,7 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     getStudentTimetable().then(setClasses).catch(e => setClassesError(e.message))
+    getStudentCourses().then(setMyCourses).catch(e => setMyCoursesError(e.message))
   }, [])
 
   const hhmm = now.toTimeString().slice(0, 5)
@@ -99,6 +102,11 @@ export default function StudentDashboard() {
           </div>
 
         </div>
+
+        <section className="mt-6 bg-white rounded-2xl shadow-lg p-6">
+          <div className="flex items-center justify-between gap-3 mb-4"><div><h3 className="text-lg font-semibold">My registered courses</h3><p className="text-sm text-slate-500">Courses approved for your academic programme and enrolment.</p></div><button className="text-sm text-blue-700 font-semibold" onClick={() => navigate("/student/courses")}>Manage courses</button></div>
+          {myCoursesError ? <p className="text-sm text-red-600">{myCoursesError}</p> : myCourses.length ? <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">{myCourses.map(course=><article key={course.course_id} className="border border-slate-200 rounded-xl p-4"><p className="text-xs font-bold text-blue-700">{course.code}</p><h4 className="font-semibold mt-1">{course.title}</h4><p className="text-xs text-slate-500 mt-2">{course.lecturer_name||"Lecturer"} · {course.credit_hours||"—"} credits</p><p className="text-xs text-slate-500">{course.batch_name||"No batch assigned"}</p></article>)}</div> : <p className="text-sm text-slate-500">You have no approved course enrolments yet. Register for a course to see it here.</p>}
+        </section>
 
         {/* ── Today's classes ───────────────────────────────────────────── */}
         <div className="mt-6 bg-white rounded-2xl shadow-lg p-6">
