@@ -280,11 +280,14 @@ def create_course(body: CourseCreate, user: User = Depends(get_current_user), db
     code = body.code.strip().upper()
     if db.query(Course).filter(Course.code == code).first():
         raise HTTPException(409, "Course code already exists")
-    if user.role == "faculty" and not body.programme_id and not body.programme_ids and not (body.programme_name or "").strip():
-        raise HTTPException(422, "Enter the eligible programme for this course")
-    programme = db.query(Programme).filter(Programme.id == body.programme_id).first() if body.programme_id else None
-    if body.programme_id and not programme:
+    requested_programme_id = body.programme_id or (body.programme_ids[0] if body.programme_ids else None)
+    if not requested_programme_id:
+        raise HTTPException(422, "Select an eligible programme from the academic directory")
+    programme = db.query(Programme).filter(Programme.id == requested_programme_id).first()
+    if not programme:
         raise HTTPException(404, "Programme not found")
+    if user.role == "faculty" and user.department_id and programme.department_id != user.department_id:
+        raise HTTPException(403, "You can only create courses for programmes in your assigned department")
     data = body.model_dump(exclude={"code", "prerequisite_ids", "programme_ids", "batch_names"})
     data["lecturer_id"] = lecturer.id
     data["institution_name"] = (body.institution_name or lecturer.institution_name or "").strip() or None
@@ -300,11 +303,15 @@ def create_course(body: CourseCreate, user: User = Depends(get_current_user), db
     c = Course(**data, code=code, registration_code=token_urlsafe(9),
                registration_code_expires_at=datetime.utcnow() + timedelta(days=7))
     db.add(c); db.flush()
-    programme_ids = list(body.programme_ids)
-    if body.programme_id and body.programme_id not in programme_ids:
-        programme_ids.append(body.programme_id)
-    if programme_ids:
-        _set_course_programmes(db, c, programme_ids)
+    programme_ids = list(set(body.programme_ids + [requested_programme_id]))
+    linked_programmes = db.query(Programme).filter(Programme.id.in_(programme_ids)).all()
+    if len(linked_programmes) != len(programme_ids):
+        db.rollback()
+        raise HTTPException(422, "One or more selected programmes do not exist")
+    if user.role == "faculty" and user.department_id and any(p.department_id != user.department_id for p in linked_programmes):
+        db.rollback()
+        raise HTTPException(403, "You can only offer courses to programmes in your assigned department")
+    _set_course_programmes(db, c, programme_ids)
     for name in body.batch_names:
         clean = (name or "").strip()
         if clean and not db.query(CourseBatch).filter_by(course_id=c.id, name=clean).first():
