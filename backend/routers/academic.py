@@ -424,6 +424,31 @@ def update_lecturer_schedule(schedule_id: int, body: LecturerScheduleCreate,
         slot_start = _hhmm(slot.start_time); slot_end = _hhmm(slot.end_time)
         if slot_start and slot_end and start < slot_end and end > slot_start:
             raise HTTPException(409, f"This time overlaps with {slot.subject} ({slot.start_time}–{slot.end_time})")
+    # Exclude the schedule being edited, but reject overlaps with every
+    # other lecturer's booking for the same physical room.
+    room_key = (body.building.strip().casefold(), body.room_no.strip().casefold())
+    room_slots = db.query(FacultySchedule, Venue).join(
+        Venue, FacultySchedule.venue_id == Venue.id
+    ).filter(
+        FacultySchedule.day_of_week == body.day_of_week,
+        FacultySchedule.id != schedule_id,
+    ).all()
+    for existing, existing_venue in room_slots:
+        existing_key = (
+            (existing_venue.building or "").strip().casefold(),
+            (existing.room_no or "").strip().casefold(),
+        )
+        old_start = _hhmm(existing.start_time)
+        old_end = _hhmm(existing.end_time)
+        if existing_key == room_key and old_start and old_end and start < old_end and end > old_start:
+            owner = db.query(User).filter(User.id == existing.faculty_id).first()
+            owner_name = owner.name if owner else "another lecturer"
+            raise HTTPException(
+                409,
+                f"This room is already booked by {owner_name} "
+                f"({existing.start_time}–{existing.end_time})",
+            )
+
     venue_name = f"{body.building.strip()} — Room {body.room_no.strip()}"
     venue = db.query(Venue).filter(Venue.name == venue_name).first()
     if not venue:
