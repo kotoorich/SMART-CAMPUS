@@ -235,3 +235,69 @@ def delete_programme(programme_id: int, user: User = Depends(get_current_user), 
         raise HTTPException(409, "This programme is in use by courses or students and cannot be deleted")
     db.delete(row); db.commit(); audit(db, user, "delete", "programme_directory", programme_id)
     return {"message": "Programme deleted"}
+
+
+# Administrator supervisory deletion. Administrators may remove directory records
+# across institutions, but cannot create or edit them. Deletion is deliberately
+# restricted to unreferenced records so existing students/courses are never orphaned.
+def _admin_directory_user(user: User):
+    if user.role != "admin":
+        raise HTTPException(403, "Administrator access required")
+    return user
+
+
+@router.delete("/admin/academic/faculties/{faculty_id}")
+def admin_delete_faculty(faculty_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _admin_directory_user(user)
+    row = db.query(Faculty).filter(Faculty.id == faculty_id).first()
+    if not row:
+        raise HTTPException(404, "Faculty / school not found")
+    if db.query(Department).filter(Department.faculty_id == faculty_id).first():
+        raise HTTPException(409, "This faculty still contains departments. Delete or move its departments first.")
+    db.delete(row)
+    db.commit()
+    audit(db, user, "delete", "faculty_directory", faculty_id, f"{row.name} · {row.institution_name}")
+    publish_sync("academic_directory", {"action": "faculty_directory_delete", "id": faculty_id}, roles=["admin", "faculty"])
+    return {"message": "Faculty deleted"}
+
+
+@router.delete("/admin/academic/departments/{department_id}")
+def admin_delete_department(department_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _admin_directory_user(user)
+    row = db.query(Department).filter(Department.id == department_id).first()
+    if not row:
+        raise HTTPException(404, "Department not found")
+    in_use = (
+        db.query(Programme).filter(Programme.department_id == department_id).first()
+        or db.query(User).filter(User.department_id == department_id).first()
+        or db.query(Course).filter(Course.department_id == department_id).first()
+    )
+    if in_use:
+        raise HTTPException(409, "This department is linked to programmes, users or courses. Resolve those records before deleting it.")
+    detail = f"{row.name} · {row.institution_name}"
+    db.delete(row)
+    db.commit()
+    audit(db, user, "delete", "department_directory", department_id, detail)
+    publish_sync("academic_directory", {"action": "department_directory_delete", "id": department_id}, roles=["admin", "faculty"])
+    return {"message": "Department deleted"}
+
+
+@router.delete("/admin/academic/programmes/{programme_id}")
+def admin_delete_programme(programme_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _admin_directory_user(user)
+    row = db.query(Programme).filter(Programme.id == programme_id).first()
+    if not row:
+        raise HTTPException(404, "Programme not found")
+    in_use = (
+        db.query(Course).filter(Course.programme_id == programme_id).first()
+        or db.query(CourseProgramme).filter(CourseProgramme.programme_id == programme_id).first()
+        or db.query(User).filter(User.programme_id == programme_id).first()
+    )
+    if in_use:
+        raise HTTPException(409, "This programme is linked to courses or students. Resolve those records before deleting it.")
+    detail = f"{row.name} · {row.institution_name}"
+    db.delete(row)
+    db.commit()
+    audit(db, user, "delete", "programme_directory", programme_id, detail)
+    publish_sync("academic_directory", {"action": "programme_directory_delete", "id": programme_id}, roles=["admin", "faculty"])
+    return {"message": "Programme deleted"}
