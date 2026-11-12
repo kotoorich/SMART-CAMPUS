@@ -34,6 +34,9 @@ _ADDED_COLUMNS = [
     ("qr_sessions", "token", "VARCHAR"),
     ("qr_sessions", "course_id", "INTEGER"),
     ("users", "section", "VARCHAR"),
+    ("faculties", "institution_name", "VARCHAR DEFAULT 'University of Cape Coast'"),
+    ("departments", "institution_name", "VARCHAR DEFAULT 'University of Cape Coast'"),
+    ("programmes", "institution_name", "VARCHAR DEFAULT 'University of Cape Coast'"),
     ("users", "index_number", "VARCHAR"),
     ("users", "department_id", "INTEGER"),
     ("users", "programme_id", "INTEGER"),
@@ -243,8 +246,25 @@ def backfill_academic_directory_links() -> None:
 def run_migrations() -> None:
     """Apply every migration in order. Safe to call on every start-up."""
     add_missing_columns()
+    backfill_directory_institutions()
     backfill_academic_directory_links()
     add_identity_indexes()
     retire_face_column()
     rebuild_attendance_for_sessions()
     backfill_registration_code_expiry()
+
+
+
+def backfill_directory_institutions() -> None:
+    """Keep legacy academic records visible while assigning them an institution."""
+    tables = set(inspect(engine).get_table_names())
+    if not {"faculties", "departments", "programmes"}.issubset(tables):
+        return
+    with engine.begin() as conn:
+        for table in ("faculties", "departments", "programmes"):
+            columns = {c["name"] for c in inspect(engine).get_columns(table)}
+            if "institution_name" in columns:
+                conn.execute(text(
+                    "UPDATE " + table + " SET institution_name = 'University of Cape Coast' "
+                    "WHERE institution_name IS NULL OR trim(institution_name) = ''"
+                ))
