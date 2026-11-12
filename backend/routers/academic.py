@@ -278,8 +278,8 @@ def create_course(body: CourseCreate, user: User = Depends(get_current_user), db
     if not lecturer:
         raise HTTPException(404, "Lecturer not found")
     code = body.code.strip().upper()
-    if db.query(Course).filter(Course.code == code).first():
-        raise HTTPException(409, "Course code already exists")
+    if db.query(Course).filter(Course.code == code, Course.institution_name.ilike(lecturer.institution_name or "")).first():
+        raise HTTPException(409, "Course code already exists in your institution")
     requested_programme_id = body.programme_id or (body.programme_ids[0] if body.programme_ids else None)
     if not requested_programme_id:
         raise HTTPException(422, "Select an eligible programme from the academic directory")
@@ -515,6 +515,8 @@ def update_course(course_id: int, body: CourseUpdate, user: User = Depends(get_c
             selected = db.query(Programme).filter(Programme.id == updates["programme_id"]).first()
             if not selected:
                 raise HTTPException(404, "Programme not found")
+            if (selected.institution_name or "").strip().casefold() != (user.institution_name or "").strip().casefold():
+                raise HTTPException(403, "You can only assign courses to programmes in your institution")
             if user.department_id and selected.department_id != user.department_id:
                 raise HTTPException(403, "You can only assign courses to programmes in your department")
             c.programme_id = selected.id
