@@ -209,7 +209,7 @@ def test_student_signup_with_institution_profile():
         "name": "Dup", "index_number": "2024999", "email": "other@example.com",
         "password": "StrongPass@1", "phone": "+233240000998",
         "ghana_card_number": "GHA-987654321-0", "registration_selfie": _selfie_b64(),
-        "consent_biometrics": True, "institution_name": "Example University",
+        "consent_biometrics": True, "institution_name": "University of Cape Coast",
         "faculty_name": "School of Technology", "department_name": "Computing",
         "programme_name": "BSc Computer Science", "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"], "academic_year": "2026/2027",
     })
@@ -225,7 +225,7 @@ def test_student_passport_registration_uses_hashed_identity_document():
         "password": "StrongPass@1", "phone": "+233240000997",
         "identity_document_type": "passport", "identity_document_number": "P1234567",
         "registration_selfie": _selfie_b64(), "consent_biometrics": True,
-        "institution_name": "Example University", "faculty_name": faculty["name"],
+        "institution_name": "University of Cape Coast", "faculty_name": faculty["name"],
         "department_name": department["name"], "programme_name": programme["name"],
         "programme_id": programme["id"], "academic_year": "2026/2027", "level": 100,
     })
@@ -351,7 +351,7 @@ def test_room_booking_conflict_between_lecturers(admin, faculty):
     second_lecturer = client.post("/admin/faculty", headers=admin, json={
         "name": "Room Conflict Lecturer", "email": "room.conflict@example.com",
         "password": "Lecturer@12345", "staff_id": "ROOM-LECT-1",
-        "institution_name": "Smart Campus",
+        "institution_name": "University of Cape Coast",
     })
     assert second_lecturer.status_code == 201, second_lecturer.text
     second_auth = auth(("room.conflict@example.com", "Lecturer@12345", "faculty"))
