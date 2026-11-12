@@ -33,7 +33,7 @@ from seed import seed_data, PERIOD_TIMES, ALL_PERIODS
 import realtime
 from realtime import notify, notify_many, audit, publish_sync
 
-app = FastAPI(title="Smart Campus Attendance API", version="3.0.0")
+app = FastAPI(title="Smart Campus Attendance API", version="3.0.1")
 
 app.add_middleware(
     CORSMiddleware,
