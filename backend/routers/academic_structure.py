@@ -69,9 +69,10 @@ def admin_academic_directory(user: User = Depends(get_current_user), db: Session
 def create_faculty(body: FacultyBody, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     _admin(user)
     name = body.name.strip()
-    if db.query(Faculty).filter(Faculty.name.ilike(name)).first():
-        raise HTTPException(409, "Faculty already exists")
-    row = Faculty(name=name, code=(body.code or "").strip().upper() or None, dean=(body.dean or "").strip() or None)
+    code = (body.code or "").strip().upper() or None
+    if db.query(Faculty).filter(Faculty.name.ilike(name)).first() or (code and db.query(Faculty).filter(Faculty.code == code).first()):
+        raise HTTPException(409, "Faculty name or code already exists")
+    row = Faculty(name=name, code=code, dean=(body.dean or "").strip() or None)
     db.add(row); db.commit(); db.refresh(row)
     audit(db, user, "create", "faculty_directory", row.id, row.name)
     publish_sync("academic_directory", {"action": "faculty_created", "id": row.id}, roles=["admin", "faculty"])
@@ -83,9 +84,10 @@ def update_faculty(faculty_id: int, body: FacultyBody, user: User = Depends(get_
     _admin(user)
     row = db.query(Faculty).filter(Faculty.id == faculty_id).first()
     if not row: raise HTTPException(404, "Faculty not found")
-    if db.query(Faculty).filter(Faculty.name.ilike(body.name.strip()), Faculty.id != faculty_id).first():
-        raise HTTPException(409, "Faculty already exists")
-    row.name = body.name.strip(); row.code = (body.code or "").strip().upper() or None; row.dean = (body.dean or "").strip() or None
+    code = (body.code or "").strip().upper() or None
+    if db.query(Faculty).filter(Faculty.name.ilike(body.name.strip()), Faculty.id != faculty_id).first() or (code and db.query(Faculty).filter(Faculty.code == code, Faculty.id != faculty_id).first()):
+        raise HTTPException(409, "Faculty name or code already exists")
+    row.name = body.name.strip(); row.code = code; row.dean = (body.dean or "").strip() or None
     db.commit(); db.refresh(row)
     audit(db, user, "update", "faculty_directory", row.id, row.name)
     return {"id": row.id, "name": row.name, "code": row.code, "dean": row.dean}
@@ -109,9 +111,10 @@ def create_department(body: DepartmentBody, user: User = Depends(get_current_use
     if not db.query(Faculty).filter(Faculty.id == body.faculty_id).first():
         raise HTTPException(404, "Select a valid faculty")
     name = body.name.strip()
-    if db.query(Department).filter(Department.faculty_id == body.faculty_id, Department.name.ilike(name)).first():
-        raise HTTPException(409, "Department already exists in this faculty")
-    row = Department(name=name, code=(body.code or "").strip().upper() or None, faculty_id=body.faculty_id, head=(body.head or "").strip() or None)
+    code = (body.code or "").strip().upper() or None
+    if db.query(Department).filter(Department.faculty_id == body.faculty_id, Department.name.ilike(name)).first() or (code and db.query(Department).filter(Department.code == code).first()):
+        raise HTTPException(409, "Department name or code already exists")
+    row = Department(name=name, code=code, faculty_id=body.faculty_id, head=(body.head or "").strip() or None)
     db.add(row); db.commit(); db.refresh(row)
     audit(db, user, "create", "department_directory", row.id, row.name)
     publish_sync("academic_directory", {"action": "department_created", "id": row.id}, roles=["admin", "faculty"])
@@ -125,9 +128,10 @@ def update_department(department_id: int, body: DepartmentBody, user: User = Dep
     if not row: raise HTTPException(404, "Department not found")
     if not db.query(Faculty).filter(Faculty.id == body.faculty_id).first():
         raise HTTPException(404, "Select a valid faculty")
-    if db.query(Department).filter(Department.faculty_id == body.faculty_id, Department.name.ilike(body.name.strip()), Department.id != department_id).first():
-        raise HTTPException(409, "Department already exists in this faculty")
-    row.name = body.name.strip(); row.code = (body.code or "").strip().upper() or None; row.faculty_id = body.faculty_id; row.head = (body.head or "").strip() or None
+    code = (body.code or "").strip().upper() or None
+    if db.query(Department).filter(Department.faculty_id == body.faculty_id, Department.name.ilike(body.name.strip()), Department.id != department_id).first() or (code and db.query(Department).filter(Department.code == code, Department.id != department_id).first()):
+        raise HTTPException(409, "Department name or code already exists")
+    row.name = body.name.strip(); row.code = code; row.faculty_id = body.faculty_id; row.head = (body.head or "").strip() or None
     db.commit(); db.refresh(row)
     audit(db, user, "update", "department_directory", row.id, row.name)
     return {"id": row.id, "name": row.name, "code": row.code, "faculty_id": row.faculty_id, "head": row.head}
@@ -138,8 +142,9 @@ def delete_department(department_id: int, user: User = Depends(get_current_user)
     _admin(user)
     row = db.query(Department).filter(Department.id == department_id).first()
     if not row: raise HTTPException(404, "Department not found")
-    if db.query(Programme).filter(Programme.department_id == department_id).first():
-        raise HTTPException(409, "Move or delete its programmes before deleting this department")
+    from models import Course
+    if db.query(Programme).filter(Programme.department_id == department_id).first() or db.query(User).filter(User.department_id == department_id).first() or db.query(Course).filter(Course.department_id == department_id).first():
+        raise HTTPException(409, "This department is assigned to programmes, users or courses and cannot be deleted")
     db.delete(row); db.commit()
     audit(db, user, "delete", "department_directory", department_id)
     return {"message": "Department deleted"}
@@ -153,9 +158,10 @@ def create_programme(body: ProgrammeBody, user: User = Depends(get_current_user)
     if not department: raise HTTPException(404, "Department not found")
     if user.role == "faculty" and user.department_id != department.id:
         raise HTTPException(403, "Lecturers can only create programmes within their assigned department")
-    if db.query(Programme).filter(Programme.department_id == department.id, Programme.name.ilike(body.name.strip())).first():
-        raise HTTPException(409, "Programme already exists in this department")
-    row = Programme(name=body.name.strip(), code=(body.code or "").strip().upper() or None, department_id=department.id, award=(body.award or "").strip() or None, duration_years=body.duration_years)
+    code = (body.code or "").strip().upper() or None
+    if db.query(Programme).filter(Programme.department_id == department.id, Programme.name.ilike(body.name.strip())).first() or (code and db.query(Programme).filter(Programme.code == code).first()):
+        raise HTTPException(409, "Programme name or code already exists")
+    row = Programme(name=body.name.strip(), code=code, department_id=department.id, award=(body.award or "").strip() or None, duration_years=body.duration_years)
     db.add(row); db.commit(); db.refresh(row)
     audit(db, user, "create", "programme_directory", row.id, row.name)
     publish_sync("academic_directory", {"action": "programme_created", "id": row.id}, roles=["admin", "faculty"])
@@ -172,9 +178,10 @@ def update_programme(programme_id: int, body: ProgrammeBody, user: User = Depend
     if not department: raise HTTPException(404, "Department not found")
     if user.role == "faculty" and (user.department_id != row.department_id or user.department_id != department.id):
         raise HTTPException(403, "Lecturers can only manage programmes within their assigned department")
-    if db.query(Programme).filter(Programme.department_id == department.id, Programme.name.ilike(body.name.strip()), Programme.id != programme_id).first():
-        raise HTTPException(409, "Programme already exists in this department")
-    row.name = body.name.strip(); row.code = (body.code or "").strip().upper() or None; row.department_id = department.id; row.award = (body.award or "").strip() or None; row.duration_years = body.duration_years
+    code = (body.code or "").strip().upper() or None
+    if db.query(Programme).filter(Programme.department_id == department.id, Programme.name.ilike(body.name.strip()), Programme.id != programme_id).first() or (code and db.query(Programme).filter(Programme.code == code, Programme.id != programme_id).first()):
+        raise HTTPException(409, "Programme name or code already exists")
+    row.name = body.name.strip(); row.code = code; row.department_id = department.id; row.award = (body.award or "").strip() or None; row.duration_years = body.duration_years
     db.commit(); db.refresh(row)
     audit(db, user, "update", "programme_directory", row.id, row.name)
     return {"id": row.id, "name": row.name, "code": row.code, "department_id": row.department_id, "award": row.award, "duration_years": row.duration_years}
