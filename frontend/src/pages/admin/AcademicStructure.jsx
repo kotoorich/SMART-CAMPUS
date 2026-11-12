@@ -23,11 +23,11 @@ export default function AcademicStructure() {
   useEffect(() => { load(); }, [admin]);
   const run = async (action, success) => {
     setBusy(true); setError(""); setNotice("");
-    try { await action(); setNotice(success); await load(); }
-    catch (e) { setError(e.message || "The operation could not be completed."); }
+    try { await action(); setNotice(success); await load(); return true; }
+    catch (e) { setError(e.message || "The operation could not be completed."); return false; }
     finally { setBusy(false); }
   };
-  const submit = (e, fn, form, reset) => { e.preventDefault(); run(() => fn(form), "Academic directory updated successfully."); reset(); };
+  const submit = async (e, fn, form, reset) => { e.preventDefault(); const saved = await run(() => fn(form), "Academic directory updated successfully."); if (saved) reset(); };
   const renameFaculty = f => { const name=window.prompt("Faculty / school name",f.name); if(name?.trim()) run(()=>updateFaculty(f.id,{name:name.trim(),code:f.code,dean:f.dean}),"Faculty updated."); };
   const renameDepartment = d => { const name=window.prompt("Department name",d.name); if(name?.trim()) run(()=>updateDepartment(d.id,{name:name.trim(),code:d.code,faculty_id:d.faculty_id,head:d.head}),"Department updated."); };
   const renameProgramme = p => { const name=window.prompt("Programme name",p.name); if(name?.trim()) run(()=>updateProgramme(p.id,{name:name.trim(),code:p.code,department_id:p.department_id,award:p.award,duration_years:p.duration_years}),"Programme updated."); };
@@ -47,7 +47,7 @@ export default function AcademicStructure() {
           <div className="grid grid-cols-2 gap-2"><input className="border rounded-lg p-2" placeholder="Code (optional)" value={facultyForm.code} onChange={e=>setFacultyForm(v=>({...v,code:e.target.value}))}/><input className="border rounded-lg p-2" placeholder="Dean (optional)" value={facultyForm.dean} onChange={e=>setFacultyForm(v=>({...v,dean:e.target.value}))}/></div>
           <button disabled={busy} className="primary-btn"><Plus size={15}/> Add faculty</button>
         </form>
-        <form className="academic-panel space-y-3" onSubmit={e=>{e.preventDefault();run(()=>createDepartment({...departmentForm,faculty_id:Number(departmentForm.faculty_id)}),"Department created.");setDepartmentForm({name:"",code:"",faculty_id:""});}}>
+        <form className="academic-panel space-y-3" onSubmit={async e=>{e.preventDefault();const saved=await run(()=>createDepartment({...departmentForm,faculty_id:Number(departmentForm.faculty_id)}),"Department created.");if(saved)setDepartmentForm({name:"",code:"",faculty_id:""});}}>
           <h2 className="font-semibold flex items-center gap-2"><Layers3 size={18}/> Add department</h2>
           <input className="w-full border rounded-lg p-2" placeholder="Department name" required value={departmentForm.name} onChange={e=>setDepartmentForm(v=>({...v,name:e.target.value}))}/>
           <select className="w-full border rounded-lg p-2" required value={departmentForm.faculty_id} onChange={e=>setDepartmentForm(v=>({...v,faculty_id:e.target.value}))}><option value="">Select faculty / school</option>{directory.faculties.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select>
@@ -57,7 +57,7 @@ export default function AcademicStructure() {
       </section>}
       {!admin && <section className="academic-panel space-y-3">
         <h2 className="font-semibold flex items-center gap-2"><GraduationCap size={18}/> Create a department programme</h2>
-        <form className="grid md:grid-cols-2 gap-3" onSubmit={e=>{e.preventDefault();run(()=>createProgramme({...programmeForm,department_id:Number(programmeForm.department_id),duration_years:Number(programmeForm.duration_years)}),"Programme created.");setProgrammeForm(v=>({...v,name:"",code:""}));}}>
+        <form className="grid md:grid-cols-2 gap-3" onSubmit={async e=>{e.preventDefault();const saved=await run(()=>createProgramme({...programmeForm,department_id:Number(programmeForm.department_id),duration_years:Number(programmeForm.duration_years)}),"Programme created.");if(saved)setProgrammeForm(v=>({...v,name:"",code:""}));}}>
           <input className="border rounded-lg p-2" placeholder="Programme name" required value={programmeForm.name} onChange={e=>setProgrammeForm(v=>({...v,name:e.target.value}))}/>
           <input className="border rounded-lg p-2" placeholder="Programme code (optional)" value={programmeForm.code} onChange={e=>setProgrammeForm(v=>({...v,code:e.target.value}))}/>
           <select className="border rounded-lg p-2" required value={programmeForm.department_id} onChange={e=>setProgrammeForm(v=>({...v,department_id:e.target.value}))}><option value="">Select department</option>{directory.departments.filter(d=>admin || d.id===user?.department_id).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select>
