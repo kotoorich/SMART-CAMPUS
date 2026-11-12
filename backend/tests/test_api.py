@@ -162,10 +162,11 @@ def test_academic_directory_and_role_boundaries(admin, faculty, student):
         "department_id": own_department,
     }).status_code == 403
     other_department = next(d["id"] for d in data["departments"] if d["id"] != own_department)
+    # Lecturers can create programmes in any department belonging to their own institution.
     assert client.post("/academic/programmes", headers=faculty, json={
-        "name": "Outside Department", "code": "CI-OUTSIDE-PROG",
+        "name": "Same Institution Department", "code": "CI-OUTSIDE-PROG",
         "department_id": other_department,
-    }).status_code == 403
+    }).status_code == 201
     assert client.post("/academic/courses", headers=admin, json={
         "title": "Admin Course", "code": "CI-ADMIN-COURSE", "programme_id": data["programmes"][0]["id"],
     }).status_code == 403
@@ -176,7 +177,7 @@ def test_student_signup_with_institution_profile():
         "name": "New Applicant", "index_number": "2024999", "email": "applicant@example.com",
         "password": "StrongPass@1", "phone": "+233240000999",
         "ghana_card_number": "GHA-123456789-0", "registration_selfie": _selfie_b64(),
-        "consent_biometrics": True, "institution_name": "Example University",
+        "consent_biometrics": True, "institution_name": "University of Cape Coast",
         "faculty_name": "School of Technology", "department_name": "Computing",
         "programme_name": "BSc Computer Science", "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"], "academic_year": "2026/2027",
         "level": 100, "interests": "ai",
@@ -305,7 +306,7 @@ def test_lecturer_can_edit_own_course_details(admin, faculty):
     # A lecturer must not be able to edit another lecturer's course.
     other_faculty = client.post("/admin/faculty", headers=admin, json={
         "name": "Other Lecturer", "email": "other.lecturer@smartcampus.com",
-        "password": "Lecturer@12345", "staff_id": "STF-OTHER", "institution_name": "Smart Campus",
+        "password": "Lecturer@12345", "staff_id": "STF-OTHER", "institution_name": "University of Cape Coast",
     }).json()
     other_credentials = ("other.lecturer@smartcampus.com", "Lecturer@12345", "faculty")
     other = client.post("/academic/courses", headers=auth(other_credentials), json={
