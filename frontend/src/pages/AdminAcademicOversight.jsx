@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, ClipboardList, BookOpen, Users, Activity } from "lucide-react";
+import { RefreshCw, ClipboardList, BookOpen, Activity } from "lucide-react";
 import MainLayout from "../layouts/MainLayout";
 import { listCourses, listEnrolments, getAttendanceSummary, getAdminAttendanceRecords } from "../services/api";
 
