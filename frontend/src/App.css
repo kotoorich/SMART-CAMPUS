@@ -426,3 +426,12 @@
     flex: 0 0 auto;
   }
 }
+
+
+/* Registration selfie camera is opt-in and user controlled */
+.signup-camera-help{margin:0 0 10px;color:#64748b;font-size:12px;line-height:1.5}
+.signup-camera-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.signup-camera-cancel{min-height:42px;padding:0 16px;border:1px solid #d7e0eb;border-radius:12px;background:#fff;color:#334155;font-size:13px;font-weight:700}
+.signup-camera-cancel:hover{background:#f5f8fc;border-color:#b9c9dc}
+.signup-camera-actions .auth-submit{flex:1}
+@media(max-width:480px){.signup-camera-actions{align-items:stretch}.signup-camera-actions>*{width:100%}}
