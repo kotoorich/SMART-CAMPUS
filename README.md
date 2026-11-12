@@ -62,7 +62,7 @@ Use a normal **Web Service**. This project does not require a Render Blueprint.
 
 1. Push the latest code to the `main` branch of this repository.
 2. In Render, select **New + → Web Service** and connect `kotoorich/SMART-CAMPUS`.
-3. Select branch `main`, runtime **Python 3**, and set the **Root Directory** to `backend`.
+3. Select branch `main`, runtime **Python 3**, and set the **Root Directory** to `backend`. The `backend/.python-version` file pins the service to Python 3.12.6.
 4. Use these commands:
 
 | Render field | Value |
