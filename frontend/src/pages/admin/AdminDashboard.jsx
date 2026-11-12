@@ -108,7 +108,7 @@ export default function AdminDashboard() {
                     <td className="pr-6 text-gray-600">{student.email}</td>
                     <td className="pr-6 text-gray-600">{student.programme_name || student.department || "—"}</td>
                     <td className="pr-6 text-gray-600">{student.level ? `Level ${student.level}` : "—"}</td>
-                    <td className="pr-6 text-gray-600"><button onClick={() => viewSelfie(student.id)} className="text-blue-700 underline">View selfie</button><small className="block">•••• {student.ghana_card_last4 || "—"}</small></td>
+                    <td className="pr-6 text-gray-600"><button onClick={() => viewSelfie(student.id)} className="text-blue-700 underline">View selfie</button><small className="block">{student.identity_document_type === "passport" ? "Passport" : "Ghana Card"} · •••• {student.identity_document_last4 || student.ghana_card_last4 || "—"}</small></td>
                     <td>
                       <button
                         onClick={() => handleApprove(student.id)}
