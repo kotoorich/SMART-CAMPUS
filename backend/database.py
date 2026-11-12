@@ -14,6 +14,14 @@ DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{_default_db}").strip(
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+# requirements.txt installs psycopg2-binary (the psycopg2 driver). SQLAlchemy
+# otherwise defaults postgresql:// to psycopg (v3), which is not installed and
+# causes Render to crash during startup with: ModuleNotFoundError: psycopg.
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgresql://", "postgresql+psycopg2://", 1
+    )
+
 # SQLite needs check_same_thread=False, PostgreSQL does not.
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(
