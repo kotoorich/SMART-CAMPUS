@@ -56,6 +56,17 @@ def _clean_ghana_card(value: str) -> str:
         raise HTTPException(422, "Enter a valid Ghana Card number in the format GHA-XXXXXXXXX-X")
     return normalized
 
+def _clean_identity_document(document_type: str, value: str):
+    kind = (document_type or "ghana_card").strip().lower()
+    normalized = re.sub(r"\s+", "", value or "").upper()
+    if kind == "ghana_card":
+        return kind, _clean_ghana_card(normalized)
+    if kind == "passport":
+        if not re.fullmatch(r"[A-Z0-9]{6,20}", normalized):
+            raise HTTPException(422, "Enter a valid passport number (6–20 letters or digits)")
+        return kind, normalized
+    raise HTTPException(422, "Choose Ghana Card or passport as your identity document")
+
 
 def _email_available(db: Session, email: str):
     if db.query(User).filter(User.email.ilike(email)).first():
