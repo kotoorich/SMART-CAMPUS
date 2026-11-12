@@ -11,8 +11,8 @@ from fastapi import HTTPException
 # Institution-facing attendance limits are configured in the Admin Settings
 # screen. These are safe technical validation limits, not deployment settings.
 GPS_RADIUS_METERS = 50
-GPS_ACCURACY_CEILING = 500.0
-GPS_SESSION_ACCURACY_CEILING = 500.0
+GPS_ACCURACY_CEILING = 300.0
+GPS_SESSION_ACCURACY_CEILING = 300.0
 APP_TIMEZONE = ZoneInfo(os.getenv("APP_TIMEZONE", "Africa/Accra"))
 DEV_ALLOW_ANY_TIME = (
     os.getenv("DEV_ALLOW_ANY_TIME", "false").lower() == "true"
