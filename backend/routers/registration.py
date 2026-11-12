@@ -18,7 +18,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -26,7 +26,7 @@ from auth import SECRET_KEY
 from database import get_db
 from deps import require_admin
 from models import User, Department, Faculty, SystemSetting, RegistrationPayment
-from storage import save_selfie, resolve_path, delete_selfie
+from storage import save_selfie, read_selfie, delete_selfie
 from utils import hash_password
 
 router = APIRouter(tags=["registration"])
@@ -261,9 +261,9 @@ def get_registration_selfie(user_id: int, _: User = Depends(require_admin), db: 
     subject = db.query(User).filter(User.id == user_id, User.role.in_(("student", "faculty"))).first()
     if not subject or not subject.registration_photo_ref:
         raise HTTPException(404, "Registration selfie not found")
-    path = resolve_path(subject.registration_photo_ref)
-    media = ".jpg" if path.suffix.lower() == ".jpg" else ".png" if path.suffix.lower() == ".png" else ".webp"
-    return FileResponse(path, media_type={".jpg":"image/jpeg", ".png":"image/png", ".webp":"image/webp"}[media])
+    image_bytes, media_type = read_selfie(subject.registration_photo_ref)
+    return Response(content=image_bytes, media_type=media_type,
+                    headers={"Cache-Control": "private, no-store"})
 
 
 @router.get("/admin/pending-lecturers")
