@@ -1,0 +1,48 @@
+import { useEffect, useRef, useState } from "react";
+import Webcam from "react-webcam";
+import { ArrowLeft, ArrowRight, Camera, CheckCircle2, GraduationCap, ShieldCheck } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { getAcademicDirectory, signupStudent } from "../../services/api";
+
+export default function StudentSignupManaged() {
+  const navigate=useNavigate(); const webcam=useRef(null);
+  const [directory,setDirectory]=useState({faculties:[],departments:[],programmes:[]});
+  const [directoryError,setDirectoryError]=useState(""); const [selfie,setSelfie]=useState("");
+  const [cameraReady,setCameraReady]=useState(false); const [consent,setConsent]=useState(false);
+  const [loading,setLoading]=useState(false); const [error,setError]=useState(""); const [done,setDone]=useState(null);
+  const [form,setForm]=useState({name:"",index_number:"",email:"",phone:"",identity_document_type:"ghana_card",identity_document_number:"",password:"",institution_name:"University of Cape Coast",programme_id:"",academic_year:"",level:"100"});
+  useEffect(()=>{getAcademicDirectory().then(setDirectory).catch(e=>setDirectoryError(e.message||"Academic directory unavailable."))},[]);
+  const selected=directory.programmes.find(p=>String(p.id)===String(form.programme_id));
+  const department=directory.departments.find(d=>d.id===selected?.department_id);
+  const faculty=directory.faculties.find(f=>f.id===department?.faculty_id);
+  const change=e=>setForm(v=>({...v,[e.target.name]:e.target.value}));
+  const capture=()=>{const image=webcam.current?.getScreenshot();if(!image){setError("Camera is not ready.");return}setSelfie(image);setError("")};
+  const upload=e=>{const file=e.target.files?.[0];if(!file)return;if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>3*1024*1024){setError("Choose a JPG, PNG or WebP selfie smaller than 3 MB.");return}const reader=new FileReader();reader.onload=()=>setSelfie(String(reader.result||""));reader.onerror=()=>setError("Could not read the selected image.");reader.readAsDataURL(file)};
+  const submit=async e=>{e.preventDefault();setError("");if(!form.programme_id)return setError("Select your academic programme.");if(!selfie)return setError("Capture or upload your registration selfie.");if(!consent)return setError("Consent is required for secure identity-photo processing.");setLoading(true);try{const result=await signupStudent({name:form.name.trim(),index_number:form.index_number.trim().toUpperCase(),email:form.email.trim().toLowerCase(),phone:form.phone.trim(),identity_document_type:form.identity_document_type,identity_document_number:form.identity_document_number.trim().toUpperCase(),registration_selfie:selfie,biometric_method:"selfie",consent_biometrics:consent,password:form.password,level:Number(form.level),institution_name:form.institution_name.trim(),faculty_name:faculty?.name||"",department_name:department?.name||"",programme_name:selected?.name||"",programme_id:Number(form.programme_id),academic_year:form.academic_year.trim()});setDone(result)}catch(e){setError(e.message||"Registration could not be completed.")}finally{setLoading(false)}};
+  return <main className="auth-screen signup-auth-screen"><header className="auth-topbar"><button className="brand-lockup" onClick={()=>navigate("/")}><span className="brand-mark"><GraduationCap size={22}/></span><span><strong>smartcampus</strong><small>ATTENDANCE MANAGEMENT</small></span></button><button className="signup-back" onClick={()=>navigate("/")}><ArrowLeft size={15}/> Back</button></header>
+    <section className="auth-layout signup-auth-layout"><div className="auth-story"><div className="story-kicker">STUDENT REGISTRATION</div><h1>Your campus.<br/><em>Your attendance.</em></h1><p className="story-copy">Register using your official academic programme and verified identity details.</p><div className="signup-benefit"><ShieldCheck size={18}/><span><b>Protected identity records</b><small>Document numbers are stored as keyed hashes, not readable plaintext.</small></span></div></div>
+    <div className="auth-card-wrap"><form className="auth-card signup-form-card" onSubmit={submit}>{done?<div className="signup-success"><span><CheckCircle2 size={28}/></span><h2>Registration received.</h2><p>{done.status==="approved"?"Your account is active. You can sign in now.":"Your registration is waiting for administrator approval."}</p><button type="button" className="auth-submit" onClick={()=>navigate("/login")}>Return to sign in <ArrowRight size={17}/></button></div>:<>
+      <div className="auth-card-heading"><span className="auth-eyebrow">STUDENT ONBOARDING</span><h2>Create your account<span>.</span></h2><p>All academic details must match the institution directory.</p></div>
+      {directoryError&&<div className="auth-error">{directoryError}</div>}
+      <div className="signup-fields">
+        <label>Full legal name<input name="name" value={form.name} onChange={change} required autoComplete="name"/></label>
+        <label>Index number<input name="index_number" value={form.index_number} onChange={change} required placeholder="e.g. PSITC/22/001"/></label>
+        <label className="signup-wide">Institution<input name="institution_name" value={form.institution_name} onChange={change} required/></label>
+        <label className="signup-wide">Academic programme<select name="programme_id" value={form.programme_id} onChange={change} required><option value="">Select your programme</option>{directory.programmes.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+        <label>Faculty / School<input value={faculty?.name||""} readOnly placeholder="Selected automatically"/></label>
+        <label>Department<input value={department?.name||""} readOnly placeholder="Selected automatically"/></label>
+        <label>Academic year<input name="academic_year" value={form.academic_year} onChange={change} required placeholder="e.g. 2026/2027"/></label>
+        <label>Level<select name="level" value={form.level} onChange={change}>{[100,200,300,400,500,600,700].map(x=><option key={x} value={x}>Level {x}</option>)}</select></label>
+        <label>Email address<input name="email" type="email" value={form.email} onChange={change} required autoComplete="email"/></label>
+        <label>Phone number<input name="phone" type="tel" value={form.phone} onChange={change} required autoComplete="tel"/></label>
+        <label>Identity document<select name="identity_document_type" value={form.identity_document_type} onChange={change}><option value="ghana_card">Ghana Card</option><option value="passport">Passport</option></select></label>
+        <label>Document number<input name="identity_document_number" value={form.identity_document_number} onChange={change} required placeholder={form.identity_document_type==="ghana_card"?"GHA-XXXXXXXXX-X":"Passport number"} autoCapitalize="characters"/></label>
+        <label className="signup-wide">Password<input name="password" type="password" value={form.password} onChange={change} minLength={8} required autoComplete="new-password"/></label>
+      </div>
+      <div className="signup-selfie-block"><div className="auth-label"><Camera size={15}/> Registration selfie</div>{selfie?<div className="signup-selfie-preview"><img src={selfie} alt="Registration selfie"/><button type="button" onClick={()=>setSelfie("")}>Retake selfie</button></div>:<><div className="signup-webcam"><Webcam ref={webcam} audio={false} screenshotFormat="image/jpeg" screenshotQuality={0.78} videoConstraints={{width:640,height:480,facingMode:"user"}} onUserMedia={()=>setCameraReady(true)} onUserMediaError={()=>setCameraReady(false)}/></div><button type="button" className="auth-submit" disabled={!cameraReady} onClick={capture}><Camera size={16}/> Capture selfie</button><label className="signup-upload-fallback">Camera unavailable? Upload selfie<input type="file" accept="image/jpeg,image/png,image/webp" capture="user" onChange={upload}/></label></>}
+        <label className="signup-consent"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/> I consent to secure collection and processing of my selfie.</label><small className="signup-privacy-note">The selfie is evidence for authorised review. Automated facial recognition is not currently performed.</small></div>
+      {error&&<div className="auth-error" role="alert">{error}</div>}
+      <button className="auth-submit" type="submit" disabled={loading||!directory.programmes.length}>{loading?"Submitting…":<>Submit registration <ArrowRight size={17}/></>}</button>
+      <p className="auth-register">Already registered? <button type="button" onClick={()=>navigate("/login")}>Sign in</button></p>
+    </>}</form></div></section></main>;
+}
