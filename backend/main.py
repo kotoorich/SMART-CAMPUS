@@ -174,11 +174,14 @@ def student_signup(request: StudentSignup, db: Session = Depends(get_db)):
     approval_setting = db.query(SystemSetting).filter(SystemSetting.key == "auto_approve_students").first()
     auto_approve = bool(approval_setting and approval_setting.value.lower() == "true")
     from storage import save_selfie
-    from routers.registration import _clean_ghana_card, _ghana_hash
-    card = _clean_ghana_card(request.ghana_card_number)
-    card_hash = _ghana_hash(card)
-    if db.query(User).filter(User.ghana_card_hash == card_hash).first():
-        raise HTTPException(409, "This Ghana Card is already associated with an account")
+    from routers.registration import _clean_identity_document, _ghana_hash
+    document_type, document_number = _clean_identity_document(
+        request.identity_document_type, request.identity_document_number
+    )
+    document_hash = _ghana_hash(document_type + ":" + document_number)
+    if db.query(User).filter(User.identity_document_hash == document_hash).first():
+        raise HTTPException(409, "This identity document is already associated with an account")
+    legacy_ghana_hash = _ghana_hash(document_number) if document_type == "ghana_card" else None
     if not request.consent_biometrics:
         raise HTTPException(422, "Consent is required to collect and process your registration selfie")
     photo_ref = save_selfie(request.registration_selfie)
@@ -191,7 +194,8 @@ def student_signup(request: StudentSignup, db: Session = Depends(get_db)):
         programme_name=request.programme_name.strip(), academic_year=(request.academic_year or "").strip() or None,
         level=request.level or 100, is_approved=auto_approve,
         interests=(request.interests or "").strip(), phone=request.phone.strip(),
-        ghana_card_hash=card_hash, ghana_card_last4=card[-4:],
+        ghana_card_hash=legacy_ghana_hash, ghana_card_last4=document_number[-4:] if document_type == "ghana_card" else None,
+        identity_document_type=document_type, identity_document_hash=document_hash, identity_document_last4=document_number[-4:],
         registration_photo_ref=photo_ref, biometric_method=request.biometric_method,
         identity_status="pending",
     ))
