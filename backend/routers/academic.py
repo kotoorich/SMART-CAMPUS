@@ -288,8 +288,6 @@ def create_course(body: CourseCreate, user: User = Depends(get_current_user), db
         raise HTTPException(404, "Programme not found")
     if (programme.institution_name or "").strip().casefold() != (lecturer.institution_name or "").strip().casefold():
         raise HTTPException(403, "You can only create courses for programmes in your institution")
-    if user.role == "faculty" and user.department_id and programme.department_id != user.department_id:
-        raise HTTPException(403, "You can only create courses for programmes in your assigned department")
     data = body.model_dump(exclude={"code", "prerequisite_ids", "programme_ids", "batch_names"})
     data["lecturer_id"] = lecturer.id
     data["programme_id"] = programme.id
@@ -314,9 +312,6 @@ def create_course(body: CourseCreate, user: User = Depends(get_current_user), db
     if any((p.institution_name or "").strip().casefold() != (lecturer.institution_name or "").strip().casefold() for p in linked_programmes):
         db.rollback()
         raise HTTPException(403, "A course cannot be linked to programmes from another institution")
-    if user.role == "faculty" and user.department_id and any(p.department_id != user.department_id for p in linked_programmes):
-        db.rollback()
-        raise HTTPException(403, "You can only offer courses to programmes in your assigned department")
     _set_course_programmes(db, c, programme_ids)
     for name in body.batch_names:
         clean = (name or "").strip()
@@ -517,8 +512,6 @@ def update_course(course_id: int, body: CourseUpdate, user: User = Depends(get_c
                 raise HTTPException(404, "Programme not found")
             if (selected.institution_name or "").strip().casefold() != (user.institution_name or "").strip().casefold():
                 raise HTTPException(403, "You can only assign courses to programmes in your institution")
-            if user.department_id and selected.department_id != user.department_id:
-                raise HTTPException(403, "You can only assign courses to programmes in your department")
             c.programme_id = selected.id
             c.programme_name = selected.name
             c.department_id = selected.department_id
