@@ -173,6 +173,7 @@ def student_signup(request: StudentSignup, db: Session = Depends(get_db)):
     if request.programme_id and not programme:
         raise HTTPException(404, "Select a valid academic programme")
     department = db.query(Department).filter(Department.id == programme.department_id).first() if programme and programme.department_id else None
+    faculty_record = db.query(Faculty).filter(Faculty.id == department.faculty_id).first() if department and department.faculty_id else None
 
     approval_setting = db.query(SystemSetting).filter(SystemSetting.key == "auto_approve_students").first()
     auto_approve = bool(approval_setting and approval_setting.value.lower() == "true")
@@ -193,10 +194,10 @@ def student_signup(request: StudentSignup, db: Session = Depends(get_db)):
     db.add(User(
         name=request.name.strip(), index_number=index_number, email=email,
         password=hash_password(request.password),
-        role="student", department=(request.department_name.strip() or (department.name if department else None)),
-        department_id=programme.department_id if programme else None, programme_id=programme.id if programme else None,
-        institution_name=request.institution_name.strip(), faculty_name=(request.faculty_name or "").strip() or None,
-        programme_name=request.programme_name.strip(), academic_year=(request.academic_year or "").strip() or None,
+        role="student", department=department.name,
+        department_id=programme.department_id, programme_id=programme.id,
+        institution_name=request.institution_name.strip(), faculty_name=faculty_record.name if faculty_record else None,
+        programme_name=programme.name, academic_year=(request.academic_year or "").strip() or None,
         level=request.level or 100, is_approved=auto_approve,
         interests=(request.interests or "").strip(), phone=request.phone.strip(),
         ghana_card_hash=legacy_ghana_hash, ghana_card_last4=document_number[-4:] if document_type == "ghana_card" else None,
