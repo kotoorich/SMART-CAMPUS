@@ -169,11 +169,18 @@ def student_signup(request: StudentSignup, db: Session = Depends(get_db)):
     if db.query(User).filter(User.index_number == index_number).first():
         raise HTTPException(409, "Index number already registered")
 
+    institution_name = request.institution_name.strip()
+    if not institution_name:
+        raise HTTPException(422, "Select your institution")
     programme = db.query(Programme).filter(Programme.id == request.programme_id).first() if request.programme_id else None
-    if request.programme_id and not programme:
+    if not programme:
         raise HTTPException(404, "Select a valid academic programme")
-    department = db.query(Department).filter(Department.id == programme.department_id).first() if programme and programme.department_id else None
-    faculty_record = db.query(Faculty).filter(Faculty.id == department.faculty_id).first() if department and department.faculty_id else None
+    if (programme.institution_name or "").strip().casefold() != institution_name.casefold():
+        raise HTTPException(403, "The selected programme does not belong to your institution")
+    department = db.query(Department).filter(Department.id == programme.department_id).first() if programme.department_id else None
+    if not department or (department.institution_name or "").strip().casefold() != institution_name.casefold():
+        raise HTTPException(403, "The selected programme's department is not part of your institution")
+    faculty_record = db.query(Faculty).filter(Faculty.id == department.faculty_id).first() if department.faculty_id else None
 
     approval_setting = db.query(SystemSetting).filter(SystemSetting.key == "auto_approve_students").first()
     auto_approve = bool(approval_setting and approval_setting.value.lower() == "true")
@@ -196,7 +203,7 @@ def student_signup(request: StudentSignup, db: Session = Depends(get_db)):
         password=hash_password(request.password),
         role="student", department=department.name,
         department_id=programme.department_id, programme_id=programme.id,
-        institution_name=request.institution_name.strip(), faculty_name=faculty_record.name if faculty_record else None,
+        institution_name=institution_name, faculty_name=faculty_record.name if faculty_record else None,
         programme_name=programme.name, academic_year=(request.academic_year or "").strip() or None,
         level=request.level or 100, is_approved=auto_approve,
         interests=(request.interests or "").strip(), phone=request.phone.strip(),
