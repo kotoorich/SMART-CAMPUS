@@ -4,7 +4,7 @@ import MainLayout from "../../layouts/MainLayout";
 import { useAuth } from "../../context/AuthContext";
 import { getAcademicDirectory, createFaculty, createDepartment, createProgramme, updateFaculty, updateDepartment, updateProgramme, deleteFaculty, deleteDepartment, deleteProgramme } from "../../services/api";
 
-export default function AcademicStructure({ mode = "admin" }) {
+export default function AcademicStructure() {
   const { user } = useAuth();
   const admin = user?.role === "admin";
   const [directory, setDirectory] = useState({ faculties: [], departments: [], programmes: [] });
