@@ -8,31 +8,19 @@ import {
 import "./AcademicHub.css"
 import { useRealtime } from "../hooks/useRealtime"
 import {
-  adminList, createCourse, createTimetable, deleteCourse, deleteTimetable, fetchAttendancePhoto,
+  createCourse, deleteCourse, fetchAttendancePhoto,
   createMyCourseSchedule, enrolByRegistrationCode, previewCourseByRegistrationCode,
   getAdminAttendanceRecords, getAttendanceRegister, getAttendanceSummary, getClassList, getMyCourses, getStudentCourses,
-  listCourses, listEnrolments, listTimetable, publishTimetable, reviewEnrolment,
-  rotateCourseCode, updateCourse, updateTimetable, withdrawCourse, listAttendanceSessions,
+  listCourses, listEnrolments, listTimetable, reviewEnrolment,
+  rotateCourseCode, updateCourse, withdrawCourse, listAttendanceSessions,
   listMaterials, createMaterial, deleteMaterial, updateMaterial, listAssessments, createAssessment, deleteAssessment,
   updateAssessment, enterMarks, releaseAssessment, getAssessmentResults,
   updateMyCourseSchedule, deleteMyCourseSchedule, changeBatch, getMyResults,
-  listBatches, createBatch, updateBatch, deleteBatch, getMyAcademicDirectory,
+  createBatch, updateBatch, deleteBatch, getMyAcademicDirectory,
 } from "../services/api"
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 const PERIODS = ["P1", "P2", "P3", "P4", "P5", "P6"]
-
-const blankCourse = {
-  title: "", code: "", lecturer_id: "", department: "", department_id: "", programme_id: "", programme_name: "",
-  level: "100", semester: "First Semester", academic_year: "", credit_hours: 3,
-  description: "", registration_open: true, enrolment_requires_approval: false, is_published: true,
-  batch_names: "",
-}
-
-const blankSlot = {
-  course_id: "", batch_id: "", day_of_week: 0, period: "P1", class_type: "theory",
-  room_no: "", venue_id: "", start_time: "", end_time: "", is_published: true,
-}
 
 function useFeedback() {
   const [error, setError] = useState("")
