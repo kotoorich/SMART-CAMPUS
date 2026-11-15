@@ -265,7 +265,7 @@ function AdminWorkspace({ fb }) {
               <div className="course-actions"><span className="code-small">Registration {c.registration_open ? "open" : "closed"} · {c.batches?.length || 0} batch(es)</span></div>
             </article>
           ))}
-          {!courses.length && <div className="empty-state">{loading ? "Loading courses…" : "No courses yet. Create the first course above."}</div>}
+          {!courses.length && <div className="empty-state">{loading ? "Loading courses…" : "No courses have been created by lecturers yet."}</div>}
         </div>
       </section>
 
@@ -283,19 +283,20 @@ function AdminWorkspace({ fb }) {
         </div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Day</th><th>Period</th><th>Course</th><th>Lecturer</th><th>Venue</th><th>Time</th><th>Status</th></tr></thead>
+            <thead><tr><th>Day</th><th>Period</th><th>Course</th><th>Batch</th><th>Lecturer</th><th>Venue</th><th>Time</th><th>Status</th></tr></thead>
             <tbody>
               {filteredSlots.map((s) => (
                 <tr key={s.id}>
                   <td>{s.day_name}</td><td>{s.period}</td>
                   <td>{s.course_code}<small>{s.course_title}</small></td>
+                  <td>{s.batch_name || "All batches"}</td>
                   <td>{s.faculty_name || "—"}</td><td>{s.venue_name || s.room_no || "—"}</td>
                   <td>{s.start_time}–{s.end_time}</td>
                   <td><span className={s.is_published ? "status-approved" : "status-pending"}>{s.is_published ? "published" : "draft"}</span></td>
                    
                 </tr>
               ))}
-              {!filteredSlots.length && <tr><td colSpan="7">No timetable entries match these filters.</td></tr>}
+              {!filteredSlots.length && <tr><td colSpan="8">No timetable entries match these filters.</td></tr>}
             </tbody>
           </table>
         </div>
