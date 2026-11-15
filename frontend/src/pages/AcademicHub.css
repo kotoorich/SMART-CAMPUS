@@ -94,3 +94,28 @@ td small{display:block;color:#8290a5;margin-top:4px}
 .course-detail-stats>div{padding:16px;border:1px solid #e4eaf4;border-radius:13px;background:#f8faff}.course-detail-stats strong{display:block;font-size:24px;color:#123a75}.course-detail-stats span{display:block;font-size:11px;color:#71809a;margin-top:3px}
 .course-detail-description{margin:12px 0 20px!important;line-height:1.6}
 @media(max-width:650px){.course-detail-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.course-detail-heading{align-items:flex-start}.course-detail-title{order:2;flex-basis:100%}.course-detail-heading>.course-actions{order:3}}
+
+/* Course roster filters and index-number-first identity column. */
+.course-student-filters { align-items: center; }
+.course-student-filters .search-box { min-width: 260px; }
+.course-student-filters > select {
+  min-width: 145px;
+  min-height: 43px;
+  padding: 10px 12px;
+  border: 1px solid #d7e0ee;
+  border-radius: 10px;
+  background: #fff;
+  color: #33486b;
+  font-size: 12px;
+}
+.student-index-primary {
+  color: #102f5c !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .015em;
+}
+@media(max-width:760px) {
+  .course-student-filters { align-items: stretch; }
+  .course-student-filters .search-box { min-width: 100%; flex-basis: 100%; }
+  .course-student-filters > select { flex: 1; min-width: 0; }
+}
