@@ -493,8 +493,8 @@ def update_course(course_id: int, body: CourseUpdate, user: User = Depends(get_c
     c = db.query(Course).filter(Course.id == course_id).first()
     if not c:
         raise HTTPException(404, "Course not found")
-    if user.role not in ("admin", "faculty") or (user.role == "faculty" and c.lecturer_id != user.id):
-        raise HTTPException(403, "Not your course")
+    if user.role != "faculty" or c.lecturer_id != user.id:
+        raise HTTPException(403, "Only the lecturer who owns this course can update it")
     updates = body.model_dump(exclude_unset=True)
     prereqs = updates.pop("prerequisite_ids", None)
     programme_ids = updates.pop("programme_ids", None)
@@ -537,12 +537,12 @@ def update_course(course_id: int, body: CourseUpdate, user: User = Depends(get_c
 
 
 @router.delete("/academic/courses/{course_id}")
-def delete_course(course_id: int, user: User = Depends(require_roles("admin", "faculty")),
+def delete_course(course_id: int, user: User = Depends(require_roles("faculty")),
                   db: Session = Depends(get_db)):
     c = db.query(Course).filter(Course.id == course_id).first()
     if not c:
         raise HTTPException(404, "Course not found")
-    if user.role == "faculty" and c.lecturer_id != user.id:
+    if c.lecturer_id != user.id:
         raise HTTPException(403, "You can only delete your own courses")
     if db.query(CourseEnrolment).filter(CourseEnrolment.course_id == course_id).count() or \
        db.query(Attendance).filter(Attendance.course_id == course_id).count():
@@ -565,13 +565,11 @@ class RotateCodeBody(BaseModel):
 
 @router.post("/academic/courses/{course_id}/registration-code")
 def rotate_registration_code(course_id: int, body: RotateCodeBody,
-                             user: User = Depends(require_roles("admin", "faculty")),
+                             user: User = Depends(require_roles("faculty")),
                              db: Session = Depends(get_db)):
-    course = db.query(Course).filter(Course.id == course_id).first()
+    course = db.query(Course).filter(Course.id == course_id, Course.lecturer_id == user.id).first()
     if not course:
-        raise HTTPException(404, "Course not found")
-    if user.role == "faculty" and course.lecturer_id != user.id:
-        raise HTTPException(403, "You can only change codes for your own courses")
+        raise HTTPException(404, "Course not found in your lecturer account")
     course.registration_code = token_urlsafe(9)
     course.registration_code_expires_at = datetime.utcnow() + timedelta(hours=body.expires_in_hours)
     db.commit(); db.refresh(course)
@@ -1135,8 +1133,10 @@ def list_timetable(user: User = Depends(require_admin), db: Session = Depends(ge
 
 
 @router.post("/admin/timetable", status_code=201)
-def create_slot(body: TimetableBody, user: User = Depends(require_admin), db: Session = Depends(get_db)):
+def create_slot(body: TimetableBody, user: User = Depends(require_roles("faculty")), db: Session = Depends(get_db)):
     course, faculty_id, start, end = _validate_slot(db, body)
+    if course.lecturer_id != user.id or faculty_id != user.id:
+        raise HTTPException(403, "You can only schedule your own courses")
     row = FacultySchedule()
     _apply_slot(row, body, course, faculty_id, start, end, db)
     db.add(row); db.commit(); db.refresh(row)
@@ -1147,12 +1147,14 @@ def create_slot(body: TimetableBody, user: User = Depends(require_admin), db: Se
 
 
 @router.put("/admin/timetable/{slot_id}")
-def update_slot(slot_id: int, body: TimetableBody, user: User = Depends(require_admin),
+def update_slot(slot_id: int, body: TimetableBody, user: User = Depends(require_roles("faculty")),
                 db: Session = Depends(get_db)):
-    row = db.query(FacultySchedule).filter(FacultySchedule.id == slot_id).first()
+    row = db.query(FacultySchedule).filter(FacultySchedule.id == slot_id, FacultySchedule.faculty_id == user.id).first()
     if not row:
         raise HTTPException(404, "Timetable entry not found")
     course, faculty_id, start, end = _validate_slot(db, body, exclude_id=slot_id)
+    if course.lecturer_id != user.id or faculty_id != user.id:
+        raise HTTPException(403, "You can only schedule your own courses")
     _apply_slot(row, body, course, faculty_id, start, end, db)
     db.commit(); db.refresh(row)
     audit(db, user, "update", "timetable", row.id,
@@ -1162,8 +1164,8 @@ def update_slot(slot_id: int, body: TimetableBody, user: User = Depends(require_
 
 
 @router.delete("/admin/timetable/{slot_id}")
-def delete_slot(slot_id: int, user: User = Depends(require_admin), db: Session = Depends(get_db)):
-    row = db.query(FacultySchedule).filter(FacultySchedule.id == slot_id).first()
+def delete_slot(slot_id: int, user: User = Depends(require_roles("faculty")), db: Session = Depends(get_db)):
+    row = db.query(FacultySchedule).filter(FacultySchedule.id == slot_id, FacultySchedule.faculty_id == user.id).first()
     if not row:
         raise HTTPException(404, "Timetable entry not found")
     db.delete(row); db.commit()
@@ -1179,8 +1181,8 @@ class PublishBody(BaseModel):
 
 
 @router.post("/admin/timetable/publish")
-def publish_timetable(body: PublishBody, user: User = Depends(require_admin), db: Session = Depends(get_db)):
-    q = db.query(FacultySchedule)
+def publish_timetable(body: PublishBody, user: User = Depends(require_roles("faculty")), db: Session = Depends(get_db)):
+    q = db.query(FacultySchedule).filter(FacultySchedule.faculty_id == user.id)
     if body.academic_session_id:
         q = q.filter(FacultySchedule.academic_session_id == body.academic_session_id)
     if body.day_of_week is not None:
