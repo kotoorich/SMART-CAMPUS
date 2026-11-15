@@ -13,14 +13,6 @@ export default function MainLayout({ children }) {
   const location = useLocation();
 
   const closeMobileNavigation = useCallback(() => setMobileNavOpen(false), []);
-  const showButtonFeedback = useCallback((event) => {
-    const button = event.target.closest?.("button");
-    if (!button || button.disabled || button.getAttribute("aria-disabled") === "true") return;
-    button.classList.remove("sc-click-feedback");
-    void button.offsetWidth;
-    button.classList.add("sc-click-feedback");
-    window.setTimeout(() => button.classList.remove("sc-click-feedback"), 520);
-  }, []);
   const toggleNavigation = useCallback(() => {
     if (window.matchMedia("(max-width: 900px)").matches) {
       setMobileNavOpen((open) => !open);
@@ -51,7 +43,7 @@ export default function MainLayout({ children }) {
   }, [closeMobileNavigation]);
 
   return (
-    <div className={`app-shell ${mobileNavOpen ? "nav-open" : ""} ${desktopNavCollapsed ? "nav-collapsed" : ""}`} onClickCapture={showButtonFeedback}>
+    <div className={`app-shell ${mobileNavOpen ? "nav-open" : ""} ${desktopNavCollapsed ? "nav-collapsed" : ""}`}>
       <button type="button" className="app-nav-scrim" onClick={closeMobileNavigation}
         aria-label="Close navigation menu" aria-hidden={!mobileNavOpen} tabIndex={mobileNavOpen ? 0 : -1} />
       <Sidebar onNavigate={closeMobileNavigation} />
