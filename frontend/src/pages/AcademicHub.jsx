@@ -240,35 +240,7 @@ function AdminWorkspace({ fb }) {
 
   return (
     <>
-      <section className="academic-panel">
-        <div className="panel-title"><div><h2>{editCourse ? `Edit ${editCourse.code}` : "Create a course"}</h2><p>{editCourse ? "Update the course details. The course code cannot be changed after creation." : "One canonical record — reused by the timetable, enrolments and attendance."}</p></div><Plus /></div>
-        <form className="course-form" onSubmit={createCourseSubmit}>
-          <input placeholder="Course title" value={courseForm.title} onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })} required />
-          <input placeholder="Course code (e.g. IT301)" value={courseForm.code} onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })} required disabled={!!editCourse} title={editCourse ? "Course code cannot be changed" : undefined} />
-          <select value={courseForm.lecturer_id} onChange={(e) => setCourseForm({ ...courseForm, lecturer_id: e.target.value })} required>
-            <option value="">Assign lecturer</option>
-            {lecturers.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
-          <input placeholder="Eligible programme" value={courseForm.programme_name||""} onChange={(e) => setCourseForm({ ...courseForm, programme_name: e.target.value })} required />
-          <input placeholder="Department (optional)" value={courseForm.department||""} onChange={(e) => setCourseForm({ ...courseForm, department: e.target.value })} />
-          <select value={courseForm.level} onChange={(e) => setCourseForm({ ...courseForm, level: e.target.value })}>
-            {["100", "200", "300", "400", "500", "600"].map((l) => <option key={l} value={l}>Level {l}</option>)}
-          </select>
-          <select value={courseForm.semester} onChange={(e) => setCourseForm({ ...courseForm, semester: e.target.value })}>
-            {["First Semester", "Second Semester"].map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <input placeholder="Academic year (e.g. 2025/2026)" value={courseForm.academic_year} onChange={(e) => setCourseForm({ ...courseForm, academic_year: e.target.value })} />
-          <input type="number" min="0" max="30" placeholder="Credit hours" value={courseForm.credit_hours} onChange={(e) => setCourseForm({ ...courseForm, credit_hours: e.target.value })} />
-          {!editCourse && <input className="wide" placeholder="Batches (comma separated, e.g. Batch A, Batch B)" value={courseForm.batch_names} onChange={(e) => setCourseForm({ ...courseForm, batch_names: e.target.value })} />}
-          <input className="wide" placeholder="Course description (optional)" value={courseForm.description} onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })} />
-          <label><input type="checkbox" checked={courseForm.registration_open} onChange={(e) => setCourseForm({ ...courseForm, registration_open: e.target.checked })} /> Registration open</label>
-          <label><input type="checkbox" checked={courseForm.enrolment_requires_approval} onChange={(e) => setCourseForm({ ...courseForm, enrolment_requires_approval: e.target.checked })} /> Lecturer approval required</label>
-          <label><input type="checkbox" checked={courseForm.is_published} onChange={(e) => setCourseForm({ ...courseForm, is_published: e.target.checked })} /> Visible to students</label>
-          <button className="primary-btn">{editCourse ? "Save changes" : <><Plus size={16} /> Create course</>}</button>
-          {editCourse && <button type="button" className="refresh-btn" onClick={cancelEditCourse}>Cancel edit</button>}
-        </form>
-      </section>
-
+      {/* Teaching courses are created and maintained by their lecturers. Admin has read-only oversight here. */}
       <section className="academic-panel">
         <div className="panel-title">
           <div><h2>Platform courses</h2><p>{courses.length} course(s) across registered lecturers</p></div>
@@ -290,16 +262,7 @@ function AdminWorkspace({ fb }) {
                 <span><Layers size={15} /> {c.credit_hours ?? "—"} credits · {c.programme_name || "No programme"}</span>
                 <span><CalendarDays size={15} /> {c.academic_year || "Academic year not set"}</span>
               </div>
-              <div className="course-actions">
-                <button onClick={() => startEditCourse(c)}><Pencil size={15} /> Edit</button>
-                <button onClick={() => openBatches(c)}><Layers size={15} /> Batches</button>
-                <button onClick={() => copyCode(c.registration_code)}><Copy size={15} /> Code</button>
-                <button onClick={() => rotate(c)}><RefreshCw size={15} /> Rotate</button>
-                <button onClick={() => toggleCourse(c, "registration_open")}>{c.registration_open ? "Close registration" : "Open registration"}</button>
-                <button onClick={() => toggleCourse(c, "is_published")}>{c.is_published ? "Unpublish" : "Publish"}</button>
-                <button className="danger-link" onClick={() => removeCourse(c)}><Trash2 size={15} /> Delete</button>
-                <span className="code-small">Expires: {c.registration_code_expires_at ? new Date(c.registration_code_expires_at).toLocaleDateString() : "—"}</span>
-              </div>
+              <div className="course-actions"><span className="code-small">Registration {c.registration_open ? "open" : "closed"} · {c.batches?.length || 0} batch(es)</span></div>
             </article>
           ))}
           {!courses.length && <div className="empty-state">{loading ? "Loading courses…" : "No courses yet. Create the first course above."}</div>}
@@ -308,33 +271,7 @@ function AdminWorkspace({ fb }) {
 
       <section className="academic-panel">
         <div className="panel-title"><div><h2>Timetable</h2><p>Each entry selects an existing course and references it by id.</p></div><CalendarDays /></div>
-        <form className="course-form" onSubmit={submitSlot}>
-          <select value={slotForm.course_id} onChange={(e) => setSlotForm({ ...slotForm, course_id: e.target.value, batch_id: "" })} required>
-            <option value="">Select course</option>
-            {courses.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.title}</option>)}
-          </select>
-          <select value={slotForm.batch_id} onChange={(e) => setSlotForm({ ...slotForm, batch_id: e.target.value })} title="Class batch (cohort)">
-            <option value="">Whole course / no batch</option>
-            {(courses.find((c) => String(c.id) === String(slotForm.course_id))?.batches || []).map((b) => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
-          <select value={slotForm.day_of_week} onChange={(e) => setSlotForm({ ...slotForm, day_of_week: e.target.value })}>
-            {DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}
-          </select>
-          <select value={slotForm.period} onChange={(e) => setSlotForm({ ...slotForm, period: e.target.value })}>
-            {PERIODS.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-          <input placeholder="Room (optional)" value={slotForm.room_no} onChange={(e) => setSlotForm({ ...slotForm, room_no: e.target.value })} />
-          <select value={slotForm.class_type} onChange={(e) => setSlotForm({ ...slotForm, class_type: e.target.value })}>
-            <option value="theory">Theory</option><option value="lab">Lab</option><option value="tutorial">Tutorial</option>
-          </select>
-          <input placeholder="Start HH:MM (optional)" value={slotForm.start_time} onChange={(e) => setSlotForm({ ...slotForm, start_time: e.target.value })} />
-          <input placeholder="End HH:MM (optional)" value={slotForm.end_time} onChange={(e) => setSlotForm({ ...slotForm, end_time: e.target.value })} />
-          <label><input type="checkbox" checked={slotForm.is_published} onChange={(e) => setSlotForm({ ...slotForm, is_published: e.target.checked })} /> Published</label>
-          <button className="primary-btn">{editSlot ? "Save entry" : <><Plus size={16} /> Add entry</>}</button>
-          {editSlot && <button type="button" className="refresh-btn" onClick={() => { setEditSlot(null); setSlotForm(blankSlot) }}>Cancel edit</button>}
-        </form>
+        <p className="text-sm text-slate-500">Timetable entries are created and maintained by the lecturer responsible for each course. This view is for platform-wide monitoring.</p>
         <div className="toolbar">
           <select value={slotFilter.day_of_week} onChange={(e) => setSlotFilter({ ...slotFilter, day_of_week: e.target.value })}>
             <option value="">All days</option>{DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}
@@ -415,20 +352,7 @@ function AdminWorkspace({ fb }) {
         </tbody></table></div>
       </section>
       {evidencePhoto&&<div className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4" onClick={()=>{URL.revokeObjectURL(evidencePhoto);setEvidencePhoto(null)}}><div className="max-w-lg w-full rounded-2xl bg-white p-4" onClick={e=>e.stopPropagation()}><div className="mb-3 flex justify-between"><strong>Attendance selfie evidence</strong><button onClick={()=>{URL.revokeObjectURL(evidencePhoto);setEvidencePhoto(null)}} className="text-blue-700">Close</button></div><img src={evidencePhoto} alt="Private attendance selfie evidence" className="w-full max-h-[70vh] object-contain rounded-xl"/></div></div>}
-      {batchModal && <div className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4" onClick={()=>setBatchModal(null)}><div className="max-w-2xl w-full rounded-2xl bg-white p-5" onClick={e=>e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-bold">Batches · {batchModal.course.code}</h2><p className="text-sm text-slate-500">Teaching groups students choose when registering.</p></div><button className="text-blue-700" onClick={()=>setBatchModal(null)}>Close</button></div>
-        <form className="course-form" onSubmit={addBatch}>
-          <input placeholder="Batch name (e.g. Batch 2)" value={batchForm.name} onChange={e=>setBatchForm(v=>({...v,name:e.target.value}))} required/>
-          <input type="number" min="1" placeholder="Capacity (blank = unlimited)" value={batchForm.capacity} onChange={e=>setBatchForm(v=>({...v,capacity:e.target.value}))}/>
-          <label><input type="checkbox" checked={batchForm.is_active} onChange={e=>setBatchForm(v=>({...v,is_active:e.target.checked}))}/> Active</label>
-          <button className="primary-btn">{editBatchId ? <><Pencil size={15}/> Save changes</> : <><Plus size={15}/> Add batch</>}</button>
-          {editBatchId && <button type="button" className="refresh-btn" onClick={cancelEditBatch}>Cancel edit</button>}
-        </form>
-        <div className="table-wrap mt-4"><table><thead><tr><th>Name</th><th>Enrolled</th><th>Capacity</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-          {(batchModal.batches||[]).map(b=><tr key={b.id}><td>{b.name}</td><td>{b.enrolled_count??0}</td><td>{b.capacity??"Unlimited"}</td><td><span className={b.is_active?"status-approved":"status-rejected"}>{b.is_active?"active":"inactive"}</span></td><td><div className="row-actions"><button title="Edit batch" onClick={()=>startEditBatch(b)}><Pencil size={15}/></button><button title={b.is_active?"Deactivate":"Activate"} onClick={()=>toggleBatchActive(b)}>{b.is_active?"Deactivate":"Activate"}</button><button title="Delete batch" onClick={()=>removeBatch(b)}><Trash2 size={15}/></button></div></td></tr>)}
-          {!(batchModal.batches||[]).length && <tr><td colSpan="5">This course has no batches. Add one above.</td></tr>}
-        </tbody></table></div>
-      </div></div>}
+      
     </>
   )
 }
