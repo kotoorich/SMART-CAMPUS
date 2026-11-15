@@ -258,8 +258,8 @@ def get_course(course_id: int, user: User = Depends(get_current_user), db: Sessi
     c = db.query(Course).filter(Course.id == course_id).first()
     if not c:
         raise HTTPException(404, "Course not found")
-    if user.role == "faculty" and c.lecturer_id != user.id:
-        raise HTTPException(403, "Not your course")
+    if c.lecturer_id != user.id:
+        raise HTTPException(403, "Only the lecturer who owns this course can review enrolment requests")
     lecturer = db.query(User).filter(User.id == c.lecturer_id).first()
     enrolment = db.query(CourseEnrolment).filter_by(course_id=c.id, student_id=user.id).first() \
         if user.role == "student" else None
@@ -944,7 +944,7 @@ def enrolments(user: User = Depends(get_current_user), db: Session = Depends(get
 
 @router.patch("/academic/enrolments/{enrolment_id}")
 def review(enrolment_id: int, body: Review,
-           user: User = Depends(require_roles("faculty", "admin")), db: Session = Depends(get_db)):
+           user: User = Depends(require_roles("faculty")), db: Session = Depends(get_db)):
     e = db.query(CourseEnrolment).filter(CourseEnrolment.id == enrolment_id).first()
     if not e:
         raise HTTPException(404, "Enrolment not found")
