@@ -19,7 +19,7 @@ from auth import get_current_user
 from database import get_db
 from deps import require_admin, require_roles
 from models import (
-    User, Course, CourseEnrolment, CoursePrerequisite, SystemSetting, Attendance,
+    User, Course, CourseEnrolment, CoursePrerequisite, SystemSetting, Attendance, Assessment,
     FacultySchedule, Venue, AcademicSession, Programme, LearningMaterial,
     CourseBatch, CourseProgramme, EnrolmentHistory, Department, AttendanceSession,
 )
@@ -665,6 +665,12 @@ def delete_batch(batch_id: int, user: User = Depends(require_roles("faculty")), 
         raise HTTPException(409, "Timetable entries use this batch. Remove them first.")
     if db.query(AttendanceSession).filter(AttendanceSession.batch_id == batch_id).count():
         raise HTTPException(409, "Attendance history references this batch. Deactivate it instead of deleting.")
+    if db.query(Attendance).filter(Attendance.batch_id == batch_id).count():
+        raise HTTPException(409, "Attendance records reference this batch. Deactivate it instead of deleting.")
+    if db.query(Assessment).filter(Assessment.batch_id == batch_id).count():
+        raise HTTPException(409, "Assessments reference this batch. Deactivate it instead of deleting.")
+    if db.query(LearningMaterial).filter(LearningMaterial.batch_id == batch_id).count():
+        raise HTTPException(409, "Learning materials reference this batch. Deactivate it instead of deleting.")
     batch_name, course_id = b.name, b.course_id
     db.delete(b); db.commit()
     audit(db, user, "delete", "course_batch", batch_id, batch_name)
