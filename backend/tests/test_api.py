@@ -260,9 +260,9 @@ def test_course_timetable_integration(admin, faculty, student):
 
     with SessionLocal() as db:
         before = db.query(Course).count()
-    res = client.post("/admin/timetable", headers=admin, json={
-        "course_id": course_id, "day_of_week": 4, "period": "P4", "section": "AI-1A",
-        "class_type": "theory", "is_published": True,
+    res = client.post(f"/faculty/courses/{course_id}/schedule", headers=faculty, json={
+        "day_of_week": 4, "start_time": "20:00", "end_time": "21:00",
+        "building": "Science Block", "room_no": "ITC101", "class_type": "theory",
     })
     assert res.status_code == 201, res.text
     slot = res.json()
@@ -271,34 +271,36 @@ def test_course_timetable_integration(admin, faculty, student):
     with SessionLocal() as db:
         assert db.query(Course).count() == before, "timetable entry must not create a course"
 
-    assert client.post("/admin/timetable", headers=admin, json={
-        "course_id": course_id, "day_of_week": 4, "period": "P4", "section": "AI-1A",
+    assert client.post(f"/faculty/courses/{course_id}/schedule", headers=faculty, json={
+        "day_of_week": 4, "start_time": "20:00", "end_time": "21:00",
+        "building": "Science Block", "room_no": "ITC101", "class_type": "theory",
     }).status_code == 409
 
-    assert client.post("/admin/timetable", headers=admin, json={
-        "course_id": course_id, "day_of_week": 5, "period": "P1", "section": "AI-1Z",
-        "start_time": "12:00", "end_time": "11:00",
-    }).status_code == 400
+    assert client.post(f"/faculty/courses/{course_id}/schedule", headers=faculty, json={
+        "day_of_week": 4, "start_time": "21:00", "end_time": "20:00",
+        "building": "Science Block", "room_no": "ITC101", "class_type": "theory",
+    }).status_code == 422
 
-    assert client.post("/admin/timetable", headers=admin, json={
-        "course_id": 999999, "day_of_week": 5, "period": "P1",
+    assert client.post("/faculty/courses/999999/schedule", headers=faculty, json={
+        "day_of_week": 4, "start_time": "21:00", "end_time": "22:00",
+        "building": "Science Block", "room_no": "MISSING", "class_type": "theory",
     }).status_code == 404
 
 
-def test_batch_crud_and_validation(admin):
-    courses = client.get("/academic/courses", headers=admin).json()
-    course = next(c for c in courses if c["code"] == "ITC101")
-    res = client.post(f"/admin/courses/{course['id']}/batches", headers=admin,
-                      json={"name": "Batch C", "capacity": 2})
+def test_batch_crud_and_validation(admin, faculty):
+    courses = client.get("/faculty/my-courses", headers=faculty).json()
+    course = next(c for c in courses if c["code"] == "IT101" or c["code"] == "ITC101")
+    path = f"/faculty/courses/{course['id']}/batches"
+    res = client.post(path, headers=faculty, json={"name": "Batch C", "capacity": 2})
     assert res.status_code == 201
     batch_id = res.json()["id"]
     assert res.json()["capacity"] == 2
-    assert client.post(f"/admin/courses/{course['id']}/batches", headers=admin,
-                       json={"name": "Batch C"}).status_code == 409
-    res = client.put(f"/admin/batches/{batch_id}", headers=admin, json={"name": "Batch C2"})
+    assert client.post(path, headers=faculty, json={"name": "Batch C"}).status_code == 409
+    res = client.put(f"/faculty/batches/{batch_id}", headers=faculty, json={"name": "Batch C2"})
     assert res.status_code == 200
     assert res.json()["name"] == "Batch C2"
-    assert client.delete(f"/admin/batches/{batch_id}", headers=admin).status_code == 200
+    assert client.delete(f"/faculty/batches/{batch_id}", headers=faculty).status_code == 200
+    assert client.post(path, headers=admin, json={"name": "Admin batch"}).status_code == 403
 
 
 def test_lecturer_sees_assigned_course(admin, faculty):
@@ -337,8 +339,9 @@ def test_lecturer_can_edit_own_course_details(admin, faculty):
         "programme_name": "BSc. Information Technology"}).json()
     assert client.patch(f"/academic/courses/{other['id']}", headers=faculty,
                         json={"title": "Hijacked"}).status_code == 403
-    assert client.delete(f"/academic/courses/{other['id']}", headers=admin).status_code == 200
-    assert client.delete(f"/academic/courses/{mine['id']}", headers=admin).status_code == 200
+    assert client.delete(f"/academic/courses/{other['id']}", headers=admin).status_code == 403
+    assert client.delete(f"/academic/courses/{other['id']}", headers=auth(other_credentials)).status_code == 200
+    assert client.delete(f"/academic/courses/{mine['id']}", headers=faculty).status_code == 200
 
 
 def test_room_booking_conflict_between_lecturers(admin, faculty):
@@ -389,16 +392,15 @@ def test_create_course_with_programme_id_derives_department(admin, faculty):
     created = res.json()
     assert created["programme_id"] == pid
     assert created["department"]
-    assert client.delete(f"/academic/courses/{created['id']}", headers=admin).status_code == 200
+    assert client.delete(f"/academic/courses/{created['id']}", headers=faculty).status_code == 200
 
 
-def test_edit_course_that_has_a_programme_does_not_error(admin):
-    """Regression: saving an edit round-trips programme_id back to the API."""
-    course = next(c for c in client.get("/academic/courses", headers=admin).json()
-                  if c.get("programme_ids"))
-    res = client.patch(f"/academic/courses/{course['id']}", headers=admin,
-                       json={"title": course["title"], "programme_id": course["programme_ids"][0],
-                             "programme_ids": course["programme_ids"]})
+def test_edit_course_that_has_a_programme_does_not_error(faculty):
+    """A lecturer can update the programme on a course they own."""
+    course = next(c for c in client.get("/faculty/my-courses", headers=faculty).json()
+                  if c.get("programme_id"))
+    res = client.patch(f"/academic/courses/{course['id']}", headers=faculty,
+                       json={"title": course["title"], "programme_id": course["programme_id"]})
     assert res.status_code == 200, res.text
 
 
@@ -491,10 +493,12 @@ def test_student_timetable_scoped_to_enrolments(admin, student):
                 f"timetable leaked course {slot['course_id']} the student is not enrolled in"
 
 
-def test_timetable_publication_visibility(admin, student):
-    client.post("/admin/timetable/publish", headers=admin, json={"publish": False})
+def test_timetable_publication_visibility(admin, faculty, student):
+    unpublished = client.post("/admin/timetable/publish", headers=faculty, json={"publish": False})
+    assert unpublished.status_code == 200, unpublished.text
     assert client.get("/student/timetable", headers=student).json() == []
-    client.post("/admin/timetable/publish", headers=admin, json={"publish": True})
+    published = client.post("/admin/timetable/publish", headers=faculty, json={"publish": True})
+    assert published.status_code == 200, published.text
     assert len(client.get("/student/timetable", headers=student).json()) > 0
 
 
@@ -512,42 +516,37 @@ def test_timetable_update_and_delete(admin, faculty):
         "credit_hours": 2, "is_published": True, "registration_open": True,
     })
     course_id = res.json()["id"]
-    res = client.post("/admin/timetable", headers=admin, json={
-        "course_id": course_id, "day_of_week": 3, "period": "P3", "section": "EDT-1A",
-        "is_published": False,
+    res = client.post(f"/faculty/courses/{course_id}/schedule", headers=faculty, json={
+        "day_of_week": 4, "start_time": "21:00", "end_time": "21:30",
+        "building": "Science Block", "room_no": "EDIT-101", "class_type": "theory",
     })
     assert res.status_code == 201, res.text
     slot_id = res.json()["id"]
-    res = client.put(f"/admin/timetable/{slot_id}", headers=admin, json={
-        "course_id": course_id, "day_of_week": 3, "period": "P3", "section": "EDT-1A",
-        "is_published": True,
+    res = client.put(f"/faculty/schedules/{slot_id}", headers=faculty, json={
+        "day_of_week": 4, "start_time": "21:30", "end_time": "22:00",
+        "building": "Science Block", "room_no": "EDIT-101", "class_type": "theory",
     })
     assert res.status_code == 200
-    assert res.json()["is_published"] is True
-    assert client.delete(f"/admin/timetable/{slot_id}", headers=admin).status_code == 200
+    assert res.json()["start_time"] == "21:30"
+    assert client.delete(f"/faculty/schedules/{slot_id}", headers=faculty).status_code == 200
 
 
 # ── Attendance: QR + selfie + GPS ───────────────────────────────────────────
 def _make_today_course(admin, faculty, code, period):
+    """Create a lecturer-owned course for an ad-hoc attendance session.
+
+    Timetable entries are intentionally not required: a lecturer can open a
+    QR session whenever needed, independently of the class schedule.
+    """
     lecturer_id = _lecturer_id(admin)
-    weekday = date.today().weekday()
     res = client.post("/academic/courses", headers=faculty, json={
         "title": f"{code} Course", "code": code, "lecturer_id": lecturer_id,
         "programme_id": client.get("/public/academic-directory").json()["programmes"][0]["id"],
         "credit_hours": 1, "is_published": True, "registration_open": True,
         "enrolment_requires_approval": False, "batch_names": ["Batch 1"],
     })
-    course = res.json()
-    existing = client.get("/admin/timetable", headers=admin).json()
-    for s in existing:
-        if s["faculty_id"] == lecturer_id and s["day_of_week"] == weekday and s["period"] == period:
-            client.delete(f"/admin/timetable/{s['id']}", headers=admin)
-    res = client.post("/admin/timetable", headers=admin, json={
-        "course_id": course["id"], "day_of_week": weekday, "period": period,
-        "section": "AI-1A", "is_published": True,
-    })
     assert res.status_code == 201, res.text
-    return course
+    return res.json()
 
 
 
@@ -582,10 +581,10 @@ def test_attendance_workflow(admin, faculty, student):
 
     # Session without GPS is rejected (validated by the model).
     assert client.post("/faculty/attendance/sessions", headers=faculty, json={
-        "course_id": course["id"], "period": "P1"}).status_code == 422
+        "course_id": course["id"]}).status_code == 422
 
     res = client.post("/faculty/attendance/sessions", headers=faculty, json={
-        "course_id": course["id"], "period": "P1",
+        "course_id": course["id"],
         "latitude": 5.115, "longitude": -1.289, "accuracy": 10})
     assert res.status_code == 201, res.text
     session = res.json()
@@ -821,10 +820,10 @@ def test_admin_attendance_summary_shape(admin):
     assert isinstance(res.json(), list)
 
 
-def test_course_deletion_guarded(admin):
+def test_course_deletion_guarded(admin, faculty):
     courses = client.get("/academic/courses", headers=admin).json()
     course = next(c for c in courses if c["code"] == "ATT101")
-    assert client.delete(f"/academic/courses/{course['id']}", headers=admin).status_code == 409
+    assert client.delete(f"/academic/courses/{course['id']}", headers=faculty).status_code == 409
 
 
 def test_admin_list_shapes_include_editable_fields(admin):
@@ -886,7 +885,7 @@ def test_attendance_rate_consistent_across_student_surfaces(admin, faculty, stud
                              "registration_code": course["registration_code"]}).status_code == 200
 
     opened = client.post("/faculty/attendance/sessions", headers=faculty, json={
-        "course_id": course["id"], "period": "P4",
+        "course_id": course["id"],
         "latitude": 5.115, "longitude": -1.289, "accuracy": 10}).json()
     assert client.post("/student/attendance/mark", headers=student, json={
         "token": opened["token"], "image": _unique_selfie_b64(),
@@ -937,7 +936,7 @@ def test_session_geofence_uses_distance_not_accuracy(admin, faculty, student):
                        json={"course_id": course["id"], "batch_id": batch["id"],
                              "registration_code": course["registration_code"]}).status_code == 200
     opened = client.post("/faculty/attendance/sessions", headers=faculty, json={
-        "course_id": course["id"], "period": "P6",
+        "course_id": course["id"],
         "latitude": 5.6500, "longitude": -0.1870, "accuracy": 30,
         "radius_meters": 150}).json()
     # ~15 m away with a coarse 90 m accuracy reading: inside the radius.
