@@ -50,20 +50,12 @@ function useFeedback() {
 function AdminWorkspace({ fb }) {
   const [courses, setCourses] = useState([])
   const [slots, setSlots] = useState([])
-  const [lecturers, setLecturers] = useState([])
   const [enrolments, setEnrolments] = useState([])
   const [summary, setSummary] = useState([])
   const [attendanceRows, setAttendanceRows] = useState([])
   const [evidencePhoto, setEvidencePhoto] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [courseForm, setCourseForm] = useState(blankCourse)
-  const [slotForm, setSlotForm] = useState(blankSlot)
   const [slotFilter, setSlotFilter] = useState({ day_of_week: "", course_id: "" })
-  const [editSlot, setEditSlot] = useState(null)
-  const [editCourse, setEditCourse] = useState(null)
-  const [batchModal, setBatchModal] = useState(null)   // { course, batches }
-  const [batchForm, setBatchForm] = useState({ name: "", capacity: "", is_active: true })
-  const [editBatchId, setEditBatchId] = useState(null)
   const [courseQuery, setCourseQuery] = useState("")
 
   const load = useCallback(async () => {
@@ -71,7 +63,6 @@ function AdminWorkspace({ fb }) {
     try {
       const [c, t, e] = await Promise.all([listCourses(), listTimetable(), listEnrolments()])
       setCourses(c); setSlots(t); setEnrolments(e)
-      setLecturers(await adminList("faculty"))
       try { setSummary(await getAttendanceSummary()) } catch { setSummary([]) }
       try { setAttendanceRows(await getAdminAttendanceRecords()) } catch { setAttendanceRows([]) }
     } catch (e) { fb.setError(e.message); fb.setRetry(() => load) } finally { setLoading(false) }
@@ -83,153 +74,10 @@ function AdminWorkspace({ fb }) {
     if (["courses", "timetable", "enrolments", "attendance"].includes(event.type)) load()
   })
 
-  const createCourseSubmit = async (e) => {
-    e.preventDefault()
-    const payload = { ...courseForm }
-    payload.lecturer_id = Number(courseForm.lecturer_id)
-    ;["department_id", "programme_id"].forEach((k) => { payload[k] = payload[k] ? Number(payload[k]) : null })
-    payload.credit_hours = Number(courseForm.credit_hours)
-    payload.batch_names = (courseForm.batch_names || "").split(",").map((s) => s.trim()).filter(Boolean)
-    if (editCourse) {
-      const rest = { ...payload }
-      delete rest.code
-      delete rest.batch_names
-      const updated = await fb.run(() => updateCourse(editCourse.id, rest), "Course updated.")
-      if (updated !== null) { setEditCourse(null); setCourseForm(blankCourse); load() }
-      return
-    }
-    const created = await fb.run(() => createCourse(payload), "Course created. It is now available on the timetable.")
-    if (created) { setCourseForm(blankCourse); load() }
-  }
-
-  const startEditCourse = (course) => {
-    setEditCourse(course)
-    setCourseForm({
-      title: course.title || "", code: course.code || "", lecturer_id: course.lecturer_id || "",
-      department: course.department || "", department_id: course.department_id || "",
-      programme_id: course.programme_id || "", programme_name: course.programme_name || "",
-      level: course.level || "100", semester: course.semester || "First Semester",
-      academic_year: course.academic_year || "", credit_hours: course.credit_hours ?? 3,
-      description: course.description || "", registration_open: !!course.registration_open,
-      enrolment_requires_approval: !!course.enrolment_requires_approval,
-      is_published: !!course.is_published, batch_names: "",
-    })
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  }
-
-  const cancelEditCourse = () => { setEditCourse(null); setCourseForm(blankCourse) }
-
-  const openBatches = async (course) => {
-    try {
-      const batches = await listBatches(course.id)
-      setBatchModal({ course, batches })
-      setBatchForm({ name: "", capacity: "", is_active: true })
-      setEditBatchId(null)
-    } catch (e) { fb.setError(e.message) }
-  }
-
-  const addBatch = async (e) => {
-    e.preventDefault()
-    const payload = { name: batchForm.name, capacity: batchForm.capacity === "" ? null : Number(batchForm.capacity), is_active: batchForm.is_active }
-    if (editBatchId) {
-      const ok = await fb.run(() => updateBatch(editBatchId, payload), "Batch updated.")
-      if (ok !== null) { setBatchForm({ name: "", capacity: "", is_active: true }); setEditBatchId(null); openBatches(batchModal.course) }
-      return
-    }
-    const created = await fb.run(() => createBatch(batchModal.course.id, payload), "Batch created.")
-    if (created) { setBatchForm({ name: "", capacity: "", is_active: true }); openBatches(batchModal.course) }
-  }
-
-  const startEditBatch = (batch) => {
-    setEditBatchId(batch.id)
-    setBatchForm({ name: batch.name || "", capacity: batch.capacity ?? "", is_active: !!batch.is_active })
-  }
-
-  const cancelEditBatch = () => { setEditBatchId(null); setBatchForm({ name: "", capacity: "", is_active: true }) }
-
-  const removeBatch = async (batch) => {
-    if (!window.confirm(`Delete batch "${batch.name}"?`)) return
-    const ok = await fb.run(() => deleteBatch(batch.id), "Batch deleted.")
-    if (ok !== null) openBatches(batchModal.course)
-  }
-
-  const toggleBatchActive = async (batch) => {
-    const ok = await fb.run(() => updateBatch(batch.id, { is_active: !batch.is_active }), "Batch updated.")
-    if (ok !== null) openBatches(batchModal.course)
-  }
-
-  const toggleCourse = async (course, field) => {
-    await fb.run(() => updateCourse(course.id, { [field]: !course[field] }), "Course updated.")
-    load()
-  }
-
-  const removeCourse = async (course) => {
-    if (!window.confirm(`Delete ${course.code} — ${course.title}? Courses with enrolments or attendance cannot be deleted.`)) return
-    await fb.run(() => deleteCourse(course.id), "Course deleted.")
-    load()
-  }
-
-  const copyCode = async (code) => {
-    try { await navigator.clipboard.writeText(code); fb.setNotice("Registration code copied.") }
-    catch { fb.setError("Could not access the clipboard.") }
-  }
-
-  const rotate = async (course) => {
-    if (!window.confirm(`Generate a new registration code for ${course.code}? The current code stops working immediately.`)) return
-    await fb.run(() => rotateCourseCode(course.id), "New registration code generated.")
-    load()
-  }
-
-  const submitSlot = async (e) => {
-    e.preventDefault()
-    const payload = {
-      course_id: Number(slotForm.course_id),
-      batch_id: slotForm.batch_id ? Number(slotForm.batch_id) : null,
-      day_of_week: Number(slotForm.day_of_week),
-      period: slotForm.period,
-      class_type: slotForm.class_type,
-      room_no: slotForm.room_no || null,
-      venue_id: slotForm.venue_id ? Number(slotForm.venue_id) : null,
-      start_time: slotForm.start_time || null,
-      end_time: slotForm.end_time || null,
-      is_published: slotForm.is_published,
-    }
-    if (editSlot) {
-      const ok = await fb.run(() => updateTimetable(editSlot.id, payload), "Timetable entry updated.")
-      if (ok !== null) { setEditSlot(null); setSlotForm(blankSlot); load() }
-    } else {
-      const created = await fb.run(() => createTimetable(payload), "Timetable entry added.")
-      if (created) { setSlotForm({ ...blankSlot }); load() }
-    }
-  }
-
-  const editSlotRow = (slot) => {
-    setEditSlot(slot)
-    setSlotForm({
-      course_id: slot.course_id, batch_id: slot.batch_id || "", day_of_week: slot.day_of_week, period: slot.period,
-      class_type: slot.class_type || "theory", room_no: slot.room_no || "",
-      venue_id: slot.venue_id || "", start_time: slot.start_time, end_time: slot.end_time,
-      is_published: slot.is_published,
-    })
-  }
-
-  const removeSlot = async (slot) => {
-    if (!window.confirm("Remove this timetable entry?")) return
-    await fb.run(() => deleteTimetable(slot.id), "Timetable entry removed.")
-    load()
-  }
-
   const viewAttendanceEvidence = async (id) => {
     try { setEvidencePhoto(await fetchAttendancePhoto(id)) }
     catch (e) { fb.setError(e.message) }
   }
-
-  const publish = async (publish) => {
-    await fb.run(() => publishTimetable({ publish }), publish ? "Timetable published to students and lecturers." : "Timetable unpublished.")
-    load()
-  }
-
-  const review = async (id, status) => { await fb.run(() => reviewEnrolment(id, status), `Enrolment ${status}.`); load() }
 
   const filteredSlots = useMemo(() => slots.filter((s) =>
     (slotFilter.day_of_week === "" || s.day_of_week === Number(slotFilter.day_of_week)) &&
