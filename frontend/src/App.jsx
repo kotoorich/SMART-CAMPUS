@@ -22,6 +22,15 @@ import Announcements from "./pages/Announcements"
 import AuditLog from "./pages/AuditLog"
 import UserProfile from "./pages/UserProfile"
 
+function showButtonFeedback(event) {
+  const button = event.target.closest?.("button");
+  if (!button || button.disabled || button.getAttribute("aria-disabled") === "true") return;
+  button.classList.remove("sc-click-feedback");
+  void button.offsetWidth;
+  button.classList.add("sc-click-feedback");
+  window.setTimeout(() => button.classList.remove("sc-click-feedback"), 520);
+}
+
 function ProtectedRoute({ children, role }) {
   const { user } = useAuth()
   if (!user) return <Navigate to="/login" replace />
@@ -32,6 +41,7 @@ function ProtectedRoute({ children, role }) {
 function AppRoutes() {
   const { user } = useAuth()
   return (
+    <div className="sc-app-interaction-root" onClickCapture={showButtonFeedback}>
     <Routes>
       {/* Public */}
       <Route path="/" element={<Landing />} />
@@ -77,6 +87,7 @@ function AppRoutes() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </div>
   )
 }
 
