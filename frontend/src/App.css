@@ -435,3 +435,34 @@
 .signup-camera-cancel:hover{background:#f5f8fc;border-color:#b9c9dc}
 .signup-camera-actions .auth-submit{flex:1}
 @media(max-width:480px){.signup-camera-actions{align-items:stretch}.signup-camera-actions>*{width:100%}}
+
+/* Immediate, visible feedback for every enabled button after a click. */
+.app-shell button:not(:disabled), .auth-screen button:not(:disabled) {
+  -webkit-tap-highlight-color: transparent;
+  transform-origin: center;
+}
+.app-shell button:active:not(:disabled), .auth-screen button:active:not(:disabled) {
+  transform: translateY(1px) scale(.965);
+  box-shadow: 0 2px 7px rgba(10, 42, 94, .16);
+}
+.app-shell button:focus-visible, .auth-screen button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, .28);
+  outline-offset: 3px;
+}
+.app-shell button:disabled, .auth-screen button:disabled {
+  cursor: not-allowed;
+  opacity: .62;
+}
+.sc-click-feedback {
+  animation: sc-button-click-feedback .48s cubic-bezier(.2,.75,.25,1);
+}
+@keyframes sc-button-click-feedback {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(37,99,235,0); }
+  28% { transform: scale(.955); box-shadow: 0 0 0 5px rgba(37,99,235,.12); }
+  65% { transform: scale(1.018); box-shadow: 0 5px 16px rgba(37,99,235,.16); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(37,99,235,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sc-click-feedback { animation: none; }
+  .app-shell button, .auth-screen button { transition: none !important; }
+}
