@@ -256,6 +256,11 @@ def open_session(body: OpenSessionBody, user: User = Depends(require_roles("facu
         schedule = _own_schedule(db, user, course.id, body.period, body.schedule_id)
         if (body.schedule_id or body.period) and not schedule:
             raise HTTPException(404, "The selected timetable entry was not found for this course")
+        if schedule.batch_id and body.batch_id and schedule.batch_id != body.batch_id:
+            raise HTTPException(400, "The selected batch does not match the selected timetable entry")
+        if schedule.batch_id and body.batch_id is None:
+            batch = db.query(CourseBatch).filter(CourseBatch.id == schedule.batch_id,
+                                                  CourseBatch.course_id == course.id).first()
 
     now = app_now()
     period = (schedule.period if schedule else (body.period or f"ADHOC-{now.strftime('%H%M%S')}"))
