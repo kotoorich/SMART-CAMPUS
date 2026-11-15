@@ -462,6 +462,9 @@ function LecturerWorkspace({ fb }) {
   const [editCourseOpen, setEditCourseOpen] = useState(false)
   const [editCourseForm, setEditCourseForm] = useState({ title: "", programme_name: "", department: "", level: "100", semester: "First Semester", academic_year: "", credit_hours: 3, description: "", registration_open: true, enrolment_requires_approval: true, is_published: true })
   const [scheduleForm, setScheduleForm] = useState({ course_id: "", day_of_week: "0", start_time: "09:00", end_time: "11:00", building: "", room_no: "", class_type: "theory" })
+  const [batchForm, setBatchForm] = useState({ name: "", capacity: "", is_active: true })
+  const [editBatchId, setEditBatchId] = useState(null)
+
 
   const loadCourses = useCallback(async () => {
     setLoading(true)
@@ -553,7 +556,7 @@ function LecturerWorkspace({ fb }) {
 
   const createSchedule = async (e) => {
     e.preventDefault()
-    const payload = { ...scheduleForm, day_of_week: Number(scheduleForm.day_of_week), course_id: Number(selectedId), class_type: scheduleForm.class_type }
+    const payload = { ...scheduleForm, batch_id: scheduleForm.batch_id ? Number(scheduleForm.batch_id) : null, day_of_week: Number(scheduleForm.day_of_week), course_id: Number(selectedId), class_type: scheduleForm.class_type }
     if (editScheduleId) {
       const updated = await fb.run(() => updateMyCourseSchedule(editScheduleId, payload), "Class schedule updated.")
       if (updated !== null) { setEditScheduleId(null); setShowSchedule(false); loadCourses(); loadCourseDetail(selectedId) }
@@ -563,11 +566,41 @@ function LecturerWorkspace({ fb }) {
     if (created) { setShowSchedule(false); loadCourses(); loadCourseDetail(selectedId) }
   }
 
+  const saveBatch = async (e) => {
+    e.preventDefault()
+    if (!selectedCourse) return
+    const payload = { name: batchForm.name.trim(), capacity: batchForm.capacity === "" ? null : Number(batchForm.capacity), is_active: batchForm.is_active }
+    const result = editBatchId
+      ? await fb.run(() => updateBatch(editBatchId, payload), "Batch updated.")
+      : await fb.run(() => createBatch(selectedCourse.id, payload), "Batch created.")
+    if (result !== null) {
+      setBatchForm({ name: "", capacity: "", is_active: true })
+      setEditBatchId(null)
+      await loadCourses()
+    }
+  }
+
+  const editBatch = (batch) => {
+    setEditBatchId(batch.id)
+    setBatchForm({ name: batch.name || "", capacity: batch.capacity ?? "", is_active: !!batch.is_active })
+  }
+
+  const toggleBatch = async (batch) => {
+    const result = await fb.run(() => updateBatch(batch.id, { is_active: !batch.is_active }), "Batch status updated.")
+    if (result !== null) loadCourses()
+  }
+
+  const removeBatch = async (batch) => {
+    if (!window.confirm(`Delete batch "${batch.name}"? Batches with enrolments or schedules must be deactivated instead.`)) return
+    const result = await fb.run(() => deleteBatch(batch.id), "Batch deleted.")
+    if (result !== null) loadCourses()
+  }
+
   const startEditSchedule = (slot) => {
     setEditScheduleId(slot.id)
     setShowSchedule(true)
     setScheduleForm({
-      course_id: String(slot.course_id || selectedId), day_of_week: String(slot.day_of_week ?? 0),
+      course_id: String(slot.course_id || selectedId), batch_id: String(slot.batch_id || ""), day_of_week: String(slot.day_of_week ?? 0),
       start_time: slot.start_time || "09:00", end_time: slot.end_time || "11:00",
       building: slot.venue_name ? String(slot.venue_name).split(" — ")[0] : "",
       room_no: slot.room_no || "", class_type: slot.class_type || "theory",
@@ -724,9 +757,23 @@ function LecturerWorkspace({ fb }) {
           </form>}
           <div className="course-detail-stats"><div><strong>{selectedCourse.enrolled_count || 0}</strong><span>Approved students</span></div><div><strong>{selectedCourse.pending_count || 0}</strong><span>Pending requests</span></div><div><strong>{courseRegister.length}</strong><span>Attendance records</span></div><div><strong>{courseSessions.length}</strong><span>Attendance sessions</span></div></div>
           <p className="course-detail-description">{selectedCourse.description || "No course description has been added."}</p>
-          <div className="panel-title mt-5"><div><h2>Class schedule</h2><p>Scheduled classes are informational and do not restrict when you can open attendance.</p></div><button className="primary-btn" onClick={() => { setEditScheduleId(null); setShowSchedule(v => !v) }}><Plus size={15}/> Add schedule</button></div>
+          <section className="academic-panel mt-5">
+            <div className="panel-title"><div><h2>Batch management</h2><p>Create and manage the teaching groups for {selectedCourse.code}. Students will select an active batch when enrolling.</p></div><Layers /></div>
+            <form className="course-form" onSubmit={saveBatch}>
+              <input placeholder="Batch name (e.g. Batch A)" value={batchForm.name} onChange={e=>setBatchForm(v=>({...v,name:e.target.value}))} required />
+              <input type="number" min="1" placeholder="Capacity (blank = unlimited)" value={batchForm.capacity} onChange={e=>setBatchForm(v=>({...v,capacity:e.target.value}))} />
+              <label><input type="checkbox" checked={batchForm.is_active} onChange={e=>setBatchForm(v=>({...v,is_active:e.target.checked}))}/> Active for student enrolment</label>
+              <button className="primary-btn">{editBatchId ? "Save batch changes" : "Create batch"}</button>
+              {editBatchId && <button type="button" className="refresh-btn" onClick={()=>{setEditBatchId(null);setBatchForm({name:"",capacity:"",is_active:true})}}>Cancel edit</button>}
+            </form>
+            <div className="table-wrap mt-4"><table><thead><tr><th>Batch</th><th>Enrolled</th><th>Capacity</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+              {(selectedCourse.batches||[]).map(b=><tr key={b.id}><td>{b.name}</td><td>{b.enrolled_count??0}</td><td>{b.capacity??"Unlimited"}</td><td>{b.is_active?"Active":"Inactive"}</td><td><div className="row-actions"><button type="button" title="Edit batch" onClick={()=>editBatch(b)}><Pencil size={15}/></button><button type="button" onClick={()=>toggleBatch(b)}>{b.is_active?"Deactivate":"Activate"}</button><button type="button" title="Delete batch" onClick={()=>removeBatch(b)}><Trash2 size={15}/></button></div></td></tr>)}
+              {!(selectedCourse.batches||[]).length && <tr><td colSpan="5">No batches have been created for this course yet.</td></tr>}
+            </tbody></table></div>
+          </section>
+          <div className="panel-title mt-5"><div><h2>Class schedule</h2><p>Scheduled classes are informational and do not restrict when you can open attendance.</p></div><button className="primary-btn" onClick={() => { setEditScheduleId(null); setScheduleForm(v=>({...v,course_id:String(selectedCourse.id),batch_id:""})); setShowSchedule(v => !v) }}><Plus size={15}/> Add schedule</button></div>
           {(selectedCourse.schedules || []).length ? <div className="table-wrap"><table><thead><tr><th>Day</th><th>Time</th><th>Venue</th><th>Type</th><th>Actions</th></tr></thead><tbody>{selectedCourse.schedules.map(s=><tr key={s.id}><td>{s.day_name || DAYS[s.day_of_week]}</td><td>{s.start_time}–{s.end_time}</td><td>{s.venue_name || s.room_no || "—"}</td><td>{s.class_type || "Lecture"}</td><td><div className="row-actions"><button title="Edit schedule" onClick={()=>startEditSchedule(s)}><Pencil size={15}/></button><button title="Remove schedule" onClick={()=>removeSchedule(s)}><Trash2 size={15}/></button></div></td></tr>)}</tbody></table></div> : <div className="empty-state">No schedule has been added for this course.</div>}
-          {showSchedule && <form className="course-form mt-4" onSubmit={createSchedule}><select value={scheduleForm.day_of_week} onChange={e=>setScheduleForm(v=>({...v,day_of_week:e.target.value}))}>{DAYS.map((d,i)=><option key={d} value={i}>{d}</option>)}</select><input type="time" value={scheduleForm.start_time} onChange={e=>setScheduleForm(v=>({...v,start_time:e.target.value}))} required/><input type="time" value={scheduleForm.end_time} onChange={e=>setScheduleForm(v=>({...v,end_time:e.target.value}))} required/><input placeholder="Building" value={scheduleForm.building} onChange={e=>setScheduleForm(v=>({...v,building:e.target.value}))} required/><input placeholder="Room" value={scheduleForm.room_no} onChange={e=>setScheduleForm(v=>({...v,room_no:e.target.value}))} required/><select value={scheduleForm.class_type} onChange={e=>setScheduleForm(v=>({...v,class_type:e.target.value}))}><option value="theory">Lecture</option><option value="lab">Laboratory</option><option value="seminar">Seminar</option></select><button className="primary-btn"><CalendarDays size={15}/> {editScheduleId ? "Update schedule" : "Save schedule"}</button>{editScheduleId && <button type="button" className="refresh-btn" onClick={()=>{setEditScheduleId(null); setShowSchedule(false)}}>Cancel edit</button>}</form>}
+          {showSchedule && <form className="course-form mt-4" onSubmit={createSchedule}><select value={scheduleForm.day_of_week} onChange={e=>setScheduleForm(v=>({...v,day_of_week:e.target.value}))}>{DAYS.map((d,i)=><option key={d} value={i}>{d}</option>)}</select><input type="time" value={scheduleForm.start_time} onChange={e=>setScheduleForm(v=>({...v,start_time:e.target.value}))} required/><input type="time" value={scheduleForm.end_time} onChange={e=>setScheduleForm(v=>({...v,end_time:e.target.value}))} required/><input placeholder="Building" value={scheduleForm.building} onChange={e=>setScheduleForm(v=>({...v,building:e.target.value}))} required/><input placeholder="Room" value={scheduleForm.room_no} onChange={e=>setScheduleForm(v=>({...v,room_no:e.target.value}))} required/><select value={scheduleForm.batch_id||""} onChange={e=>setScheduleForm(v=>({...v,batch_id:e.target.value}))}><option value="">All batches / no batch</option>{(selectedCourse.batches||[]).filter(b=>b.is_active).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select><select value={scheduleForm.class_type} onChange={e=>setScheduleForm(v=>({...v,class_type:e.target.value}))}><option value="theory">Lecture</option><option value="lab">Laboratory</option><option value="seminar">Seminar</option></select><button className="primary-btn"><CalendarDays size={15}/> {editScheduleId ? "Update schedule" : "Save schedule"}</button>{editScheduleId && <button type="button" className="refresh-btn" onClick={()=>{setEditScheduleId(null); setShowSchedule(false)}}>Cancel edit</button>}</form>}
           <div className="course-actions mt-4"><Link className="primary-btn" to={`/faculty/attendance?course_id=${selectedCourse.id}`}>Open attendance controls <QrCode size={15}/></Link></div>
         </section>
       </>}
