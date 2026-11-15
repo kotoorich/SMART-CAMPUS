@@ -279,12 +279,11 @@ function AdminWorkspace({ fb }) {
           <select value={slotFilter.course_id} onChange={(e) => setSlotFilter({ ...slotFilter, course_id: e.target.value })}>
             <option value="">All courses</option>{courses.map((c) => <option key={c.id} value={c.id}>{c.code}</option>)}
           </select>
-          <button className="primary-btn" onClick={() => publish(true)}><Upload size={15} /> Publish all</button>
-          <button className="refresh-btn" onClick={() => publish(false)}>Unpublish all</button>
+
         </div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Day</th><th>Period</th><th>Course</th><th>Lecturer</th><th>Venue</th><th>Time</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Day</th><th>Period</th><th>Course</th><th>Lecturer</th><th>Venue</th><th>Time</th><th>Status</th></tr></thead>
             <tbody>
               {filteredSlots.map((s) => (
                 <tr key={s.id}>
@@ -293,10 +292,10 @@ function AdminWorkspace({ fb }) {
                   <td>{s.faculty_name || "—"}</td><td>{s.venue_name || s.room_no || "—"}</td>
                   <td>{s.start_time}–{s.end_time}</td>
                   <td><span className={s.is_published ? "status-approved" : "status-pending"}>{s.is_published ? "published" : "draft"}</span></td>
-                  <td><div className="row-actions"><button title="Edit" onClick={() => editSlotRow(s)}><RefreshCw size={15} /></button><button title="Delete" onClick={() => removeSlot(s)}><Trash2 size={15} /></button></div></td>
+                   
                 </tr>
               ))}
-              {!filteredSlots.length && <tr><td colSpan="8">No timetable entries match these filters.</td></tr>}
+              {!filteredSlots.length && <tr><td colSpan="7">No timetable entries match these filters.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -306,7 +305,7 @@ function AdminWorkspace({ fb }) {
         <div className="panel-title"><div><h2>Enrolment management</h2><p>{pending.length} pending request(s) · {enrolments.length} record(s)</p></div><ShieldCheck /></div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Student</th><th>Index number</th><th>Course</th><th>Requested</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>Student</th><th>Index number</th><th>Course</th><th>Requested</th><th>Status</th></tr></thead>
             <tbody>
               {enrolments.map((e) => (
                 <tr key={e.id}>
@@ -315,12 +314,10 @@ function AdminWorkspace({ fb }) {
                   <td>{e.course}<small>{e.course_code}</small></td>
                   <td>{new Date(e.requested_at).toLocaleString()}</td>
                   <td><span className={`status-${e.status}`}>{e.status}</span></td>
-                  <td>{e.status === "pending"
-                    ? <div className="row-actions"><button title="Approve" onClick={() => review(e.id, "approved")}><Check size={16} /></button><button title="Reject" onClick={() => review(e.id, "rejected")}><X size={16} /></button></div>
-                    : "—"}</td>
+
                 </tr>
               ))}
-              {!enrolments.length && <tr><td colSpan="6">No enrolment records yet.</td></tr>}
+              {!enrolments.length && <tr><td colSpan="5">No enrolment records yet.</td></tr>}
             </tbody>
           </table>
         </div>
