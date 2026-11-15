@@ -21,7 +21,7 @@ from deps import require_admin, require_roles
 from models import (
     User, Course, CourseEnrolment, CoursePrerequisite, SystemSetting, Attendance,
     FacultySchedule, Venue, AcademicSession, Programme, LearningMaterial,
-    CourseBatch, CourseProgramme, EnrolmentHistory, Department,
+    CourseBatch, CourseProgramme, EnrolmentHistory, Department, AttendanceSession,
 )
 from realtime import audit, notify, notify_many, publish_sync
 from seed import PERIOD_TIMES, ALL_PERIODS
@@ -641,8 +641,9 @@ def update_batch(batch_id: int, body: BatchUpdate, user: User = Depends(require_
         if dup:
             raise HTTPException(409, "Another batch of this course already uses that name")
         b.name = name
-    if body.capacity is not None:
-        b.capacity = body.capacity
+    supplied = body.model_dump(exclude_unset=True)
+    if "capacity" in supplied:
+        b.capacity = supplied["capacity"]
     if body.is_active is not None:
         b.is_active = body.is_active
     db.commit(); db.refresh(b)
@@ -662,6 +663,8 @@ def delete_batch(batch_id: int, user: User = Depends(require_roles("faculty")), 
         raise HTTPException(409, "Students are enrolled in this batch. Deactivate it instead of deleting.")
     if db.query(FacultySchedule).filter(FacultySchedule.batch_id == batch_id).count():
         raise HTTPException(409, "Timetable entries use this batch. Remove them first.")
+    if db.query(AttendanceSession).filter(AttendanceSession.batch_id == batch_id).count():
+        raise HTTPException(409, "Attendance history references this batch. Deactivate it instead of deleting.")
     batch_name, course_id = b.name, b.course_id
     db.delete(b); db.commit()
     audit(db, user, "delete", "course_batch", batch_id, batch_name)
