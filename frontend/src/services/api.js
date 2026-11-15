@@ -118,11 +118,11 @@ export const listEnrolments = (params = {}) => {
 }
 export const reviewEnrolment = (id, status) => apiFetch(`/academic/enrolments/${id}`, { method: "PATCH", body: JSON.stringify({ status }) })
 
-// ─── Course batches (admin) ──────────────────────────────
-export const listBatches = (courseId) => apiFetch(`/admin/courses/${courseId}/batches`)
-export const createBatch = (courseId, body) => apiFetch(`/admin/courses/${courseId}/batches`, { method: "POST", body: JSON.stringify(body) })
-export const updateBatch = (batchId, body) => apiFetch(`/admin/batches/${batchId}`, { method: "PUT", body: JSON.stringify(body) })
-export const deleteBatch = (batchId) => apiFetch(`/admin/batches/${batchId}`, { method: "DELETE" })
+// ─── Course batches (lecturer-owned) ─────────────────────
+export const listBatches = (courseId) => apiFetch(`/faculty/courses/${courseId}/batches`)
+export const createBatch = (courseId, body) => apiFetch(`/faculty/courses/${courseId}/batches`, { method: "POST", body: JSON.stringify(body) })
+export const updateBatch = (batchId, body) => apiFetch(`/faculty/batches/${batchId}`, { method: "PUT", body: JSON.stringify(body) })
+export const deleteBatch = (batchId) => apiFetch(`/faculty/batches/${batchId}`, { method: "DELETE" })
 
 // ─── Timetable ───────────────────────────────────────────
 export const listTimetable   = (params = {}) => {

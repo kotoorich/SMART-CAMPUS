@@ -19,9 +19,9 @@ from auth import get_current_user
 from database import get_db
 from deps import require_admin, require_roles
 from models import (
-    User, Course, CourseEnrolment, CoursePrerequisite, SystemSetting, Attendance,
+    User, Course, CourseEnrolment, CoursePrerequisite, SystemSetting, Attendance, Assessment,
     FacultySchedule, Venue, AcademicSession, Programme, LearningMaterial,
-    CourseBatch, CourseProgramme, EnrolmentHistory, Department,
+    CourseBatch, CourseProgramme, EnrolmentHistory, Department, AttendanceSession,
 )
 from realtime import audit, notify, notify_many, publish_sync
 from seed import PERIOD_TIMES, ALL_PERIODS
@@ -258,8 +258,8 @@ def get_course(course_id: int, user: User = Depends(get_current_user), db: Sessi
     c = db.query(Course).filter(Course.id == course_id).first()
     if not c:
         raise HTTPException(404, "Course not found")
-    if user.role == "faculty" and c.lecturer_id != user.id:
-        raise HTTPException(403, "Not your course")
+    if c.lecturer_id != user.id:
+        raise HTTPException(403, "Only the lecturer who owns this course can review enrolment requests")
     lecturer = db.query(User).filter(User.id == c.lecturer_id).first()
     enrolment = db.query(CourseEnrolment).filter_by(course_id=c.id, student_id=user.id).first() \
         if user.role == "student" else None
@@ -493,8 +493,8 @@ def update_course(course_id: int, body: CourseUpdate, user: User = Depends(get_c
     c = db.query(Course).filter(Course.id == course_id).first()
     if not c:
         raise HTTPException(404, "Course not found")
-    if user.role not in ("admin", "faculty") or (user.role == "faculty" and c.lecturer_id != user.id):
-        raise HTTPException(403, "Not your course")
+    if user.role != "faculty" or c.lecturer_id != user.id:
+        raise HTTPException(403, "Only the lecturer who owns this course can update it")
     updates = body.model_dump(exclude_unset=True)
     prereqs = updates.pop("prerequisite_ids", None)
     programme_ids = updates.pop("programme_ids", None)
@@ -537,12 +537,12 @@ def update_course(course_id: int, body: CourseUpdate, user: User = Depends(get_c
 
 
 @router.delete("/academic/courses/{course_id}")
-def delete_course(course_id: int, user: User = Depends(require_roles("admin", "faculty")),
+def delete_course(course_id: int, user: User = Depends(require_roles("faculty")),
                   db: Session = Depends(get_db)):
     c = db.query(Course).filter(Course.id == course_id).first()
     if not c:
         raise HTTPException(404, "Course not found")
-    if user.role == "faculty" and c.lecturer_id != user.id:
+    if c.lecturer_id != user.id:
         raise HTTPException(403, "You can only delete your own courses")
     if db.query(CourseEnrolment).filter(CourseEnrolment.course_id == course_id).count() or \
        db.query(Attendance).filter(Attendance.course_id == course_id).count():
@@ -565,13 +565,11 @@ class RotateCodeBody(BaseModel):
 
 @router.post("/academic/courses/{course_id}/registration-code")
 def rotate_registration_code(course_id: int, body: RotateCodeBody,
-                             user: User = Depends(require_roles("admin", "faculty")),
+                             user: User = Depends(require_roles("faculty")),
                              db: Session = Depends(get_db)):
-    course = db.query(Course).filter(Course.id == course_id).first()
+    course = db.query(Course).filter(Course.id == course_id, Course.lecturer_id == user.id).first()
     if not course:
-        raise HTTPException(404, "Course not found")
-    if user.role == "faculty" and course.lecturer_id != user.id:
-        raise HTTPException(403, "You can only change codes for your own courses")
+        raise HTTPException(404, "Course not found in your lecturer account")
     course.registration_code = token_urlsafe(9)
     course.registration_code_expires_at = datetime.utcnow() + timedelta(hours=body.expires_in_hours)
     db.commit(); db.refresh(course)
@@ -585,7 +583,7 @@ def rotate_registration_code(course_id: int, body: RotateCodeBody,
 class BatchBody(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     lecturer_id: Optional[int] = None
-    capacity: Optional[int] = Field(default=None, ge=1)   # omit / null = unlimited
+    capacity: Optional[int] = Field(default=None, ge=1)
     is_active: bool = True
 
 
@@ -596,25 +594,29 @@ class BatchUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
-@router.get("/admin/courses/{course_id}/batches")
-def list_batches(course_id: int, user: User = Depends(require_admin), db: Session = Depends(get_db)):
-    if not db.query(Course).filter(Course.id == course_id).first():
-        raise HTTPException(404, "Course not found")
+def _lecturer_course_or_404(db: Session, course_id: int, user: User) -> Course:
+    course = db.query(Course).filter(Course.id == course_id, Course.lecturer_id == user.id).first()
+    if not course:
+        raise HTTPException(404, "Course not found in your lecturer account")
+    return course
+
+
+@router.get("/faculty/courses/{course_id}/batches")
+def list_batches(course_id: int, user: User = Depends(require_roles("faculty")), db: Session = Depends(get_db)):
+    _lecturer_course_or_404(db, course_id, user)
     return [_batch_dict(b, db, with_counts=True) for b in _course_batches(db, course_id)]
 
 
-@router.post("/admin/courses/{course_id}/batches", status_code=201)
-def create_batch(course_id: int, body: BatchBody, user: User = Depends(require_admin),
+@router.post("/faculty/courses/{course_id}/batches", status_code=201)
+def create_batch(course_id: int, body: BatchBody, user: User = Depends(require_roles("faculty")),
                  db: Session = Depends(get_db)):
-    course = db.query(Course).filter(Course.id == course_id).first()
-    if not course:
-        raise HTTPException(404, "Course not found")
+    course = _lecturer_course_or_404(db, course_id, user)
     name = body.name.strip()
     if db.query(CourseBatch).filter_by(course_id=course_id, name=name).first():
         raise HTTPException(409, "This course already has a batch with that name")
-    if body.lecturer_id and not db.query(User).filter(User.id == body.lecturer_id, User.role == "faculty").first():
-        raise HTTPException(404, "Lecturer not found")
-    b = CourseBatch(course_id=course_id, name=name, lecturer_id=body.lecturer_id,
+    if body.lecturer_id not in (None, user.id):
+        raise HTTPException(403, "You can only assign your own lecturer account to this batch")
+    b = CourseBatch(course_id=course_id, name=name, lecturer_id=user.id,
                     capacity=body.capacity, is_active=body.is_active)
     db.add(b); db.commit(); db.refresh(b)
     audit(db, user, "create", "course_batch", b.id, f"{course.code} / {b.name}")
@@ -623,12 +625,15 @@ def create_batch(course_id: int, body: BatchBody, user: User = Depends(require_a
     return _batch_dict(b, db, with_counts=True)
 
 
-@router.put("/admin/batches/{batch_id}")
-def update_batch(batch_id: int, body: BatchUpdate, user: User = Depends(require_admin),
+@router.put("/faculty/batches/{batch_id}")
+def update_batch(batch_id: int, body: BatchUpdate, user: User = Depends(require_roles("faculty")),
                  db: Session = Depends(get_db)):
-    b = db.query(CourseBatch).filter(CourseBatch.id == batch_id).first()
+    b = db.query(CourseBatch).join(Course, Course.id == CourseBatch.course_id).filter(
+        CourseBatch.id == batch_id, Course.lecturer_id == user.id).first()
     if not b:
-        raise HTTPException(404, "Batch not found")
+        raise HTTPException(404, "Batch not found in your lecturer account")
+    if body.lecturer_id not in (None, user.id):
+        raise HTTPException(403, "You can only assign your own lecturer account to this batch")
     if body.name is not None:
         name = body.name.strip()
         dup = db.query(CourseBatch).filter(CourseBatch.course_id == b.course_id,
@@ -636,13 +641,9 @@ def update_batch(batch_id: int, body: BatchUpdate, user: User = Depends(require_
         if dup:
             raise HTTPException(409, "Another batch of this course already uses that name")
         b.name = name
-    if body.lecturer_id is not None:
-        if body.lecturer_id and not db.query(User).filter(
-                User.id == body.lecturer_id, User.role == "faculty").first():
-            raise HTTPException(404, "Lecturer not found")
-        b.lecturer_id = body.lecturer_id or None
-    if body.capacity is not None:
-        b.capacity = body.capacity
+    supplied = body.model_dump(exclude_unset=True)
+    if "capacity" in supplied:
+        b.capacity = supplied["capacity"]
     if body.is_active is not None:
         b.is_active = body.is_active
     db.commit(); db.refresh(b)
@@ -652,17 +653,27 @@ def update_batch(batch_id: int, body: BatchUpdate, user: User = Depends(require_
     return _batch_dict(b, db, with_counts=True)
 
 
-@router.delete("/admin/batches/{batch_id}")
-def delete_batch(batch_id: int, user: User = Depends(require_admin), db: Session = Depends(get_db)):
-    b = db.query(CourseBatch).filter(CourseBatch.id == batch_id).first()
+@router.delete("/faculty/batches/{batch_id}")
+def delete_batch(batch_id: int, user: User = Depends(require_roles("faculty")), db: Session = Depends(get_db)):
+    b = db.query(CourseBatch).join(Course, Course.id == CourseBatch.course_id).filter(
+        CourseBatch.id == batch_id, Course.lecturer_id == user.id).first()
     if not b:
-        raise HTTPException(404, "Batch not found")
+        raise HTTPException(404, "Batch not found in your lecturer account")
     if db.query(CourseEnrolment).filter(CourseEnrolment.batch_id == batch_id).count():
         raise HTTPException(409, "Students are enrolled in this batch. Deactivate it instead of deleting.")
     if db.query(FacultySchedule).filter(FacultySchedule.batch_id == batch_id).count():
         raise HTTPException(409, "Timetable entries use this batch. Remove them first.")
+    if db.query(AttendanceSession).filter(AttendanceSession.batch_id == batch_id).count():
+        raise HTTPException(409, "Attendance history references this batch. Deactivate it instead of deleting.")
+    if db.query(Attendance).filter(Attendance.batch_id == batch_id).count():
+        raise HTTPException(409, "Attendance records reference this batch. Deactivate it instead of deleting.")
+    if db.query(Assessment).filter(Assessment.batch_id == batch_id).count():
+        raise HTTPException(409, "Assessments reference this batch. Deactivate it instead of deleting.")
+    if db.query(LearningMaterial).filter(LearningMaterial.batch_id == batch_id).count():
+        raise HTTPException(409, "Learning materials reference this batch. Deactivate it instead of deleting.")
+    batch_name, course_id = b.name, b.course_id
     db.delete(b); db.commit()
-    audit(db, user, "delete", "course_batch", batch_id, b.name)
+    audit(db, user, "delete", "course_batch", batch_id, batch_name)
     publish_sync("batches", {"action": "delete", "batch_id": batch_id}, roles=["admin", "faculty"])
     return {"message": "Batch deleted"}
 
@@ -939,7 +950,7 @@ def enrolments(user: User = Depends(get_current_user), db: Session = Depends(get
 
 @router.patch("/academic/enrolments/{enrolment_id}")
 def review(enrolment_id: int, body: Review,
-           user: User = Depends(require_roles("faculty", "admin")), db: Session = Depends(get_db)):
+           user: User = Depends(require_roles("faculty")), db: Session = Depends(get_db)):
     e = db.query(CourseEnrolment).filter(CourseEnrolment.id == enrolment_id).first()
     if not e:
         raise HTTPException(404, "Enrolment not found")
@@ -1131,8 +1142,10 @@ def list_timetable(user: User = Depends(require_admin), db: Session = Depends(ge
 
 
 @router.post("/admin/timetable", status_code=201)
-def create_slot(body: TimetableBody, user: User = Depends(require_admin), db: Session = Depends(get_db)):
+def create_slot(body: TimetableBody, user: User = Depends(require_roles("faculty")), db: Session = Depends(get_db)):
     course, faculty_id, start, end = _validate_slot(db, body)
+    if course.lecturer_id != user.id or faculty_id != user.id:
+        raise HTTPException(403, "You can only schedule your own courses")
     row = FacultySchedule()
     _apply_slot(row, body, course, faculty_id, start, end, db)
     db.add(row); db.commit(); db.refresh(row)
@@ -1143,12 +1156,14 @@ def create_slot(body: TimetableBody, user: User = Depends(require_admin), db: Se
 
 
 @router.put("/admin/timetable/{slot_id}")
-def update_slot(slot_id: int, body: TimetableBody, user: User = Depends(require_admin),
+def update_slot(slot_id: int, body: TimetableBody, user: User = Depends(require_roles("faculty")),
                 db: Session = Depends(get_db)):
-    row = db.query(FacultySchedule).filter(FacultySchedule.id == slot_id).first()
+    row = db.query(FacultySchedule).filter(FacultySchedule.id == slot_id, FacultySchedule.faculty_id == user.id).first()
     if not row:
         raise HTTPException(404, "Timetable entry not found")
     course, faculty_id, start, end = _validate_slot(db, body, exclude_id=slot_id)
+    if course.lecturer_id != user.id or faculty_id != user.id:
+        raise HTTPException(403, "You can only schedule your own courses")
     _apply_slot(row, body, course, faculty_id, start, end, db)
     db.commit(); db.refresh(row)
     audit(db, user, "update", "timetable", row.id,
@@ -1158,8 +1173,8 @@ def update_slot(slot_id: int, body: TimetableBody, user: User = Depends(require_
 
 
 @router.delete("/admin/timetable/{slot_id}")
-def delete_slot(slot_id: int, user: User = Depends(require_admin), db: Session = Depends(get_db)):
-    row = db.query(FacultySchedule).filter(FacultySchedule.id == slot_id).first()
+def delete_slot(slot_id: int, user: User = Depends(require_roles("faculty")), db: Session = Depends(get_db)):
+    row = db.query(FacultySchedule).filter(FacultySchedule.id == slot_id, FacultySchedule.faculty_id == user.id).first()
     if not row:
         raise HTTPException(404, "Timetable entry not found")
     db.delete(row); db.commit()
@@ -1175,8 +1190,8 @@ class PublishBody(BaseModel):
 
 
 @router.post("/admin/timetable/publish")
-def publish_timetable(body: PublishBody, user: User = Depends(require_admin), db: Session = Depends(get_db)):
-    q = db.query(FacultySchedule)
+def publish_timetable(body: PublishBody, user: User = Depends(require_roles("faculty")), db: Session = Depends(get_db)):
+    q = db.query(FacultySchedule).filter(FacultySchedule.faculty_id == user.id)
     if body.academic_session_id:
         q = q.filter(FacultySchedule.academic_session_id == body.academic_session_id)
     if body.day_of_week is not None:
