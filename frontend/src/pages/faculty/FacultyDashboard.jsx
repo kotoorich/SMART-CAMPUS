@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarClock, MapPin, QrCode, RefreshCw, ShieldCheck, Users, XCircle } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
+import { useSearchParams } from "react-router-dom";
 import MainLayout from "../../layouts/MainLayout";
 import { getAttendanceCourses, openAttendanceSession, closeAttendanceSession } from "../../services/api";
 import { getBestPosition } from "../../utils/geo";
@@ -8,11 +9,13 @@ import { getBestPosition } from "../../utils/geo";
 const getPosition = () => getBestPosition();
 
 export default function FacultyDashboard() {
+  const [searchParams] = useSearchParams();
+  const requestedCourseId = searchParams.get("course_id");
   const [courses,setCourses]=useState([]); const [selected,setSelected]=useState("");
   const [scheduleId,setScheduleId]=useState(""); const [batchId,setBatchId]=useState(""); const [session,setSession]=useState(null);
   const [radius,setRadius]=useState("50"); const [duration,setDuration]=useState("10");
   const [loading,setLoading]=useState(true); const [busy,setBusy]=useState(false); const [error,setError]=useState("");
-  const load=useCallback(async()=>{setLoading(true);setError("");try{const rows=await getAttendanceCourses();setCourses(rows||[]);const first=(rows||[])[0];if(first){setSelected(String(first.course_id));setScheduleId(String(first.schedules?.[0]?.id||""));setBatchId(String(first.schedules?.[0]?.batch_id||""));}}catch(e){setError(e.message||"Could not load your scheduled classes.");}finally{setLoading(false);}},[]);
+  const load=useCallback(async()=>{setLoading(true);setError("");try{const rows=await getAttendanceCourses();setCourses(rows||[]);const first=(rows||[]).find(x=>String(x.course_id)===String(requestedCourseId))||(rows||[])[0];if(first){setSelected(String(first.course_id));setScheduleId(String(first.schedules?.[0]?.id||""));setBatchId(String(first.schedules?.[0]?.batch_id||""));}else{setSelected("");setScheduleId("");setBatchId("");}}catch(e){setError(e.message||"Could not load your scheduled classes.");}finally{setLoading(false);}},[requestedCourseId]);
   useEffect(()=>{load();},[load]);
   const course=useMemo(()=>courses.find(c=>String(c.course_id)===selected),[courses,selected]);
   const slots=course?.schedules||[]; const slot=slots.find(s=>String(s.id)===scheduleId)||null;
